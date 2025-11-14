@@ -1,0 +1,81 @@
+# Development directories
+/don't read
+/.claude
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Processed data (gitignored - generated files)
+data/race_segments/**/*.mp4
+data/race_segments/**/*.avi
+data/race_segments/**/*.mov
+data/race_segments/**/*.mkv
+data/processed/
+data/calibration/
+
+# Keep race segment metadata
+!data/race_segments/*_metadata.json
+
+# Model files (if any)
+*.pth
+*.pt
+*.h5
+*.pkl
+*.ckpt
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+
+# OS files
+Thumbs.db
+.DS_Store
