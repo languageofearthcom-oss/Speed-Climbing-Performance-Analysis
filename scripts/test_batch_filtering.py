@@ -30,7 +30,8 @@ def test_race(video_path: Path, route_map_path: str):
     # Initialize components
     hold_detector = HoldDetector(
         route_coordinates_path=route_map_path,
-        use_spatial_filtering=False
+        use_spatial_filtering=False,
+        use_climber_masking=False  # Disabled by default
     )
     calibrator = CameraCalibrator(route_coordinates_path=route_map_path)
 
@@ -46,7 +47,8 @@ def test_race(video_path: Path, route_map_path: str):
             route_coordinates_path=route_map_path,
             min_area=300,
             min_confidence=0.3,
-            use_spatial_filtering=False
+            use_spatial_filtering=False,
+            use_climber_masking=False  # Disable for calibration
         )
         initial_holds = hold_detector_relaxed.detect_holds(frame)
         calibration_result = calibrator.calibrate(frame, initial_holds)
@@ -106,7 +108,7 @@ def main():
 
         if result['status'] == 'success':
             print(f"✅ {result['initial_holds']} → {result['filtered_holds']} "
-                  f"(removed {result['removed']})")
+                  f"(removed {result['removed']} false positives)")
         else:
             print(f"⚠️  {result['status']}")
 
@@ -126,13 +128,13 @@ def main():
         total_filtered = sum(r['filtered_holds'] for r in successful)
         total_removed = sum(r['removed'] for r in successful)
 
-        print(f"Total holds detected: {total_initial}")
-        print(f"Total holds after filtering: {total_filtered}")
-        print(f"Total false positives removed: {total_removed}")
-        print(f"False positive rate: {total_removed/total_initial*100:.1f}%")
+        print(f"Total holds detected:               {total_initial}")
+        print(f"After spatial filtering:            {total_filtered}")
+        print(f"Total false positives removed:      {total_removed}")
+        print(f"False positive rate:                {total_removed/total_initial*100:.1f}%")
 
         avg_calibration = sum(r['calibration_confidence'] for r in successful) / len(successful)
-        print(f"Average calibration confidence: {avg_calibration:.2f}")
+        print(f"Average calibration confidence:     {avg_calibration:.2f}")
 
 
 if __name__ == '__main__':

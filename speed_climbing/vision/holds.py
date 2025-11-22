@@ -38,7 +38,8 @@ class HoldDetector:
         min_confidence: float = 0.4,  # Increased from default to reduce false positives
         use_adaptive_hsv: bool = True,  # New: adaptive HSV based on lighting
         use_spatial_filtering: bool = True,  # New: filter by expected grid positions
-        spatial_tolerance_m: float = 0.15  # Tolerance for spatial filtering (meters)
+        spatial_tolerance_m: float = 0.30,  # Tolerance for spatial filtering (meters) - increased to reduce false negatives
+        use_climber_masking: bool = False  # New: mask out climber body (disabled by default as climbers stand in front of wall)
     ):
         self.min_area = min_area
         self.max_area = max_area
@@ -46,7 +47,11 @@ class HoldDetector:
         self.use_adaptive_hsv = use_adaptive_hsv
         self.use_spatial_filtering = use_spatial_filtering
         self.spatial_tolerance_m = spatial_tolerance_m
+        self.use_climber_masking = use_climber_masking
         self.route_map = None
+
+        # Initialize pose detector for climber masking (lazy loading)
+        self._pose_detector = None
 
         if route_coordinates_path:
             self._load_route_coordinates(route_coordinates_path)
@@ -70,11 +75,118 @@ class HoldDetector:
             logger.error(f"Failed to load route map from {path}: {e}")
             self.route_map = None
 
+    def _get_pose_detector(self):
+        """Lazy load MediaPipe pose detector."""
+        if self._pose_detector is None:
+            try:
+                import mediapipe as mp
+                self._pose_detector = mp.solutions.pose.Pose(
+                    static_image_mode=True,
+                    min_detection_confidence=0.3,
+                    min_tracking_confidence=0.3
+                )
+            except ImportError:
+                logger.warning("MediaPipe not available, climber masking disabled")
+                self._pose_detector = False  # Mark as unavailable
+        return self._pose_detector if self._pose_detector else None
+
+    def create_climber_mask(
+        self,
+        frame: np.ndarray,
+        expansion_radius: int = 40  # Moderate expansion to avoid covering holds
+    ) -> Optional[np.ndarray]:
+        """
+        Create a binary mask covering climber(s) bodies using pose detection.
+
+        Attempts to detect BOTH climbers (left and right lanes) by processing
+        the frame twice - once for each half.
+
+        Args:
+            frame: Input BGR frame
+            expansion_radius: Pixels to expand around detected body parts
+
+        Returns:
+            Binary mask (0=background, 255=climber) or None if detection fails
+        """
+        pose_detector = self._get_pose_detector()
+        if pose_detector is None:
+            return None
+
+        try:
+            h, w = frame.shape[:2]
+            mask = np.zeros((h, w), dtype=np.uint8)
+            mid_x = w // 2
+
+            # Try to detect climbers in both halves of the frame
+            # This helps detect both left and right lane climbers
+            regions = [
+                (0, 0, w, h, "full"),  # Full frame (primary detection)
+                (0, 0, mid_x + w//4, h, "left"),  # Left lane focused
+                (mid_x - w//4, 0, w, h, "right"),  # Right lane focused
+            ]
+
+            detected_any = False
+
+            for x1, y1, x2, y2, region_name in regions:
+                # Extract region
+                region = frame[y1:y2, x1:x2]
+
+                # Convert to RGB for MediaPipe
+                rgb_region = cv2.cvtColor(region, cv2.COLOR_BGR2RGB)
+                results = pose_detector.process(rgb_region)
+
+                if not results.pose_landmarks:
+                    continue
+
+                # Get landmark positions
+                landmarks = results.pose_landmarks.landmark
+                points = []
+
+                for lm in landmarks:
+                    # Adjust coordinates to full frame
+                    x = int(lm.x * (x2 - x1)) + x1
+                    y = int(lm.y * (y2 - y1)) + y1
+
+                    # Only include visible landmarks
+                    if 0 <= x < w and 0 <= y < h and lm.visibility > 0.3:
+                        points.append((x, y))
+
+                if len(points) < 5:  # Need at least 5 visible landmarks
+                    continue
+
+                # Create convex hull around body points
+                points_array = np.array(points, dtype=np.int32)
+                hull = cv2.convexHull(points_array)
+
+                # Draw filled polygon on mask
+                cv2.fillConvexPoly(mask, hull, 255)
+                detected_any = True
+
+                logger.debug(f"Detected climber in {region_name} region with {len(points)} landmarks")
+
+            if not detected_any:
+                return None
+
+            # Expand mask to cover more area around bodies
+            if expansion_radius > 0:
+                kernel = cv2.getStructuringElement(
+                    cv2.MORPH_ELLIPSE,
+                    (expansion_radius * 2, expansion_radius * 2)
+                )
+                mask = cv2.dilate(mask, kernel, iterations=1)
+
+            return mask
+
+        except Exception as e:
+            logger.debug(f"Failed to create climber mask: {e}")
+            return None
+
     def detect_holds(
         self,
         frame: np.ndarray,
         lane: Optional[str] = None,
-        return_mask: bool = False  # New: option to return mask for debugging
+        return_mask: bool = False,  # New: option to return mask for debugging
+        apply_climber_masking: Optional[bool] = None  # Override use_climber_masking for this call
     ) -> List[DetectedHold]:
         """
         Detect holds in a single video frame using blob/region detection.
@@ -83,6 +195,7 @@ class HoldDetector:
             frame: Input BGR frame
             lane: Optional lane filter ('left' or 'right')
             return_mask: If True, return (holds, mask) instead of just holds
+            apply_climber_masking: Override for climber masking (None = use default)
 
         Returns:
             List of DetectedHold objects, or tuple (holds, mask) if return_mask=True
@@ -110,6 +223,18 @@ class HoldDetector:
 
         # Optional: Dilate slightly to merge nearby regions
         mask = cv2.dilate(mask, kernel_small, iterations=1)
+
+        # Apply climber masking to remove false detections on athlete's body
+        # Use override if provided, otherwise use default setting
+        should_mask_climber = apply_climber_masking if apply_climber_masking is not None else self.use_climber_masking
+
+        if should_mask_climber:
+            climber_mask = self.create_climber_mask(frame)
+            if climber_mask is not None:
+                # Remove regions that overlap with climber
+                # Invert climber mask (we want to keep areas NOT on climber)
+                mask = cv2.bitwise_and(mask, cv2.bitwise_not(climber_mask))
+                logger.debug("Applied climber masking to filter out body detections")
 
         # Find contours (regions of red)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

@@ -51,13 +51,15 @@ def test_spatial_filtering(video_path: str, route_map_path: str, output_path: st
     # Initialize components
     hold_detector = HoldDetector(
         route_coordinates_path=route_map_path,
-        use_spatial_filtering=False  # We'll do it manually to compare
+        use_spatial_filtering=False,  # We'll do it manually to compare
+        use_climber_masking=True  # Enable for filtering, but we'll disable for calibration
     )
 
     calibrator = CameraCalibrator(route_coordinates_path=route_map_path)
 
-    print("Step 1: Initial hold detection (without spatial filtering)...")
-    initial_holds = hold_detector.detect_holds(frame)
+    print("Step 1: Initial hold detection (without spatial filtering or climber masking)...")
+    # For calibration, disable climber masking to ensure we have enough holds
+    initial_holds = hold_detector.detect_holds(frame, apply_climber_masking=False)
     print(f"  Detected: {len(initial_holds)} holds")
 
     print("\nStep 2: Camera calibration...")
@@ -72,7 +74,8 @@ def test_spatial_filtering(video_path: str, route_map_path: str, output_path: st
             route_coordinates_path=route_map_path,
             min_area=300,
             min_confidence=0.3,
-            use_spatial_filtering=False
+            use_spatial_filtering=False,
+            use_climber_masking=False  # Also disable for relaxed detection
         )
         initial_holds = hold_detector_relaxed.detect_holds(frame)
         print(f"  Re-detected: {len(initial_holds)} holds")
