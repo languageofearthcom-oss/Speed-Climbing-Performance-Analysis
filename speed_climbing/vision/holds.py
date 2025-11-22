@@ -21,10 +21,14 @@ class DetectedHold:
     hold_num: Optional[int]  # Matched to IFSC route map, None if unmatched
     pixel_x: float
     pixel_y: float
-    confidence: float  # 0.0 to 1.0
+    confidence: float  # 0.0 to 1.0 (shape/color quality)
     contour_area: float
     panel: Optional[str] = None  # e.g., 'DX1', 'SN3'
     grid_position: Optional[str] = None  # e.g., 'F4', 'M8'
+
+    # New validation scores
+    spatial_distance: Optional[float] = None  # Distance to nearest route hold (meters)
+    validation_score: Optional[float] = None  # Overall validation score (0-1)
 
 
 class HoldDetector:
@@ -318,36 +322,43 @@ class HoldDetector:
 
         return detected_holds
 
-    def filter_by_spatial_grid(
+    def validate_holds(
         self,
         detected_holds: List[DetectedHold],
         homography: Optional[np.ndarray],
         frame_shape: Tuple[int, int],
-        lane: Optional[str] = None
+        lane: Optional[str] = None,
+        min_validation_score: float = 0.5  # Minimum score to keep a hold
     ) -> List[DetectedHold]:
         """
-        Filter detected holds by comparing to expected grid positions from route map.
+        Validate detected holds using multi-criteria scoring.
 
-        This method can be called independently and will perform spatial filtering
-        regardless of the use_spatial_filtering flag (which only controls automatic
-        filtering in detect_holds).
+        Instead of binary accept/reject, this assigns a validation score based on:
+        1. Spatial proximity to route map (soft constraint)
+        2. Detection confidence (shape/color quality)
+        3. Size reasonableness
 
         Args:
             detected_holds: List of initially detected holds
             homography: Homography matrix for pixel->world coordinate transform
             frame_shape: (height, width) of frame
             lane: 'left' or 'right' lane (filters route map by panel)
+            min_validation_score: Minimum score to keep (0-1)
 
         Returns:
-            Filtered list of holds that match expected positions
+            Validated holds with scores, sorted by validation_score
         """
-        # Only check for required dependencies (not the use_spatial_filtering flag)
+        # If no route map or homography, return all with default scores
         if not self.route_map or homography is None:
+            for hold in detected_holds:
+                hold.validation_score = hold.confidence
             return detected_holds
 
         # Get expected hold positions from route map
         route_holds = self.route_map.get('holds', [])
         if not route_holds:
+            for hold in detected_holds:
+                hold.validation_score = hold.confidence
             return detected_holds
 
         # Filter route map by lane if specified
@@ -360,8 +371,8 @@ class HoldDetector:
             [h['wall_x_m'], h['wall_y_m']] for h in route_holds
         ], dtype=np.float32)
 
-        # Transform detected holds to world coordinates
-        filtered_holds = []
+        # Validate each hold
+        validated_holds = []
         height, width = frame_shape
 
         for hold in detected_holds:
@@ -384,28 +395,76 @@ class HoldDetector:
                 min_distance = np.min(distances)
                 closest_idx = np.argmin(distances)
 
-                # Check if within tolerance
+                hold.spatial_distance = min_distance
+
+                # Calculate spatial score (exponential decay with distance)
+                # Perfect match (0m) = 1.0, tolerance (0.5m) = 0.5, far (1.0m) = 0.1
+                spatial_score = np.exp(-min_distance / 0.3)
+
+                # Size score (prefer reasonable sizes)
+                # Typical hold: 1000-5000px
+                ideal_area = 2000
+                max_deviation = 5000
+                area_deviation = abs(hold.contour_area - ideal_area)
+                size_score = max(0, 1.0 - area_deviation / max_deviation)
+
+                # Combine scores with weights
+                validation_score = (
+                    hold.confidence * 0.35 +      # Shape/color quality
+                    spatial_score * 0.50 +        # Proximity to route map (most important)
+                    size_score * 0.15             # Size reasonableness
+                )
+
+                hold.validation_score = validation_score
+
+                # Update hold info if close match
                 if min_distance <= self.spatial_tolerance_m:
-                    # Match found! Update hold info
                     matched_hold_info = route_holds[closest_idx]
                     hold.hold_num = matched_hold_info.get('hold_num')
                     hold.panel = matched_hold_info.get('panel')
                     hold.grid_position = matched_hold_info.get('grid_position')
 
-                    # Boost confidence for spatially validated holds
-                    hold.confidence = min(hold.confidence * 1.2, 1.0)
-
-                    filtered_holds.append(hold)
+                # Keep holds above minimum score
+                if validation_score >= min_validation_score:
+                    validated_holds.append(hold)
 
             except Exception as e:
-                # If transformation fails, skip this hold
+                # If transformation fails, use conservative score
                 logger.debug(f"Failed to transform hold at ({hold.pixel_x}, {hold.pixel_y}): {e}")
-                continue
+                hold.validation_score = hold.confidence * 0.5  # Penalize
+                if hold.validation_score >= min_validation_score:
+                    validated_holds.append(hold)
 
-        logger.info(f"Spatial filtering: {len(detected_holds)} -> {len(filtered_holds)} holds "
-                   f"(removed {len(detected_holds) - len(filtered_holds)} false positives)")
+        # Sort by validation score (highest first)
+        validated_holds.sort(key=lambda h: h.validation_score, reverse=True)
 
-        return filtered_holds
+        logger.info(f"Hold validation: {len(detected_holds)} -> {len(validated_holds)} holds "
+                   f"(removed {len(detected_holds) - len(validated_holds)} low-confidence detections)")
+
+        return validated_holds
+
+    def filter_by_spatial_grid(
+        self,
+        detected_holds: List[DetectedHold],
+        homography: Optional[np.ndarray],
+        frame_shape: Tuple[int, int],
+        lane: Optional[str] = None
+    ) -> List[DetectedHold]:
+        """
+        Legacy method: Filter holds by spatial grid (strict binary filtering).
+
+        DEPRECATED: Use validate_holds() instead for better multi-criteria validation.
+
+        This method is kept for backward compatibility but is not recommended
+        as it uses hard thresholds that may reject valid holds or accept false positives.
+        """
+        return self.validate_holds(
+            detected_holds,
+            homography,
+            frame_shape,
+            lane,
+            min_validation_score=0.5  # Use moderate threshold
+        )
 
     def visualize_detections(
         self,
