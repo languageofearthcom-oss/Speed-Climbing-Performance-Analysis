@@ -86,7 +86,8 @@ docker compose up -d
 | Task | Status | Description |
 |------|--------|-------------|
 | Keypoint Overlay | ✅ | Draw skeleton on video frames |
-| Angle Indicators | 📋 | Show joint angles on video |
+| Angle Indicators | ✅ | Show joint angles on video |
+| Race Segment Display | 📋 | Show start/end frame markers |
 | Score Timeline | 📋 | Graph of metrics over time |
 | Comparison View | 📋 | Side-by-side with reference athlete |
 

@@ -96,6 +96,9 @@ TRANSLATIONS = {
         'connection_color': 'Connection Color',
         'visualization_complete': 'Visualization complete!',
         'select_frame': 'Select Frame',
+        'show_angles': 'Show Joint Angles',
+        'knee_angle': 'Knee',
+        'elbow_angle': 'Elbow',
     },
     'fa': {
         'page_title': 'تحلیل سنگنوردی سرعتی',
@@ -149,6 +152,9 @@ TRANSLATIONS = {
         'connection_color': 'رنگ اتصالات',
         'visualization_complete': 'تولید تصویر کامل شد!',
         'select_frame': 'انتخاب فریم',
+        'show_angles': 'نمایش زوایای مفصل',
+        'knee_angle': 'زانو',
+        'elbow_angle': 'آرنج',
     }
 }
 
@@ -622,11 +628,41 @@ def create_category_radar(category_scores: Dict[str, float], lang: str) -> go.Fi
     return fig
 
 
+def calculate_angle_3points(p1: tuple, p2: tuple, p3: tuple) -> float:
+    """
+    Calculate angle at p2 formed by p1-p2-p3.
+
+    Args:
+        p1: First point (x, y)
+        p2: Vertex point (x, y)
+        p3: Third point (x, y)
+
+    Returns:
+        Angle in degrees (0-180)
+    """
+    import numpy as np
+
+    v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
+    v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
+
+    norm1 = np.linalg.norm(v1)
+    norm2 = np.linalg.norm(v2)
+    if norm1 < 1e-10 or norm2 < 1e-10:
+        return 0.0
+
+    cos_angle = np.dot(v1, v2) / (norm1 * norm2)
+    cos_angle = np.clip(cos_angle, -1.0, 1.0)
+    angle = np.arccos(cos_angle)
+
+    return np.degrees(angle)
+
+
 def draw_skeleton_on_frame(
     frame: 'np.ndarray',
     keypoints: Dict,
     show_connections: bool = True,
     show_keypoints: bool = True,
+    show_angles: bool = False,
     connection_color: tuple = (0, 255, 0),
     keypoint_color: tuple = (0, 255, 255)
 ) -> 'np.ndarray':
@@ -638,6 +674,7 @@ def draw_skeleton_on_frame(
         keypoints: Dictionary of keypoint data
         show_connections: Whether to draw limb connections
         show_keypoints: Whether to draw keypoint circles
+        show_angles: Whether to draw joint angles
         connection_color: BGR color for connections
         keypoint_color: BGR color for keypoints
 
@@ -683,6 +720,13 @@ def draw_skeleton_on_frame(
         y = kp.get('y', 0)
         return (int(x * width), int(y * height))
 
+    def get_normalized_coords(kp_name):
+        """Get normalized coordinates for angle calculation."""
+        kp = keypoints.get(kp_name)
+        if kp is None:
+            return None
+        return (kp.get('x', 0), kp.get('y', 0))
+
     # Draw connections
     if show_connections:
         for start_name, end_name in POSE_CONNECTIONS:
@@ -712,6 +756,76 @@ def draw_skeleton_on_frame(
                     )
                     cv2.circle(annotated, pos, 4, adjusted_color, -1)
 
+    # Draw joint angles
+    if show_angles:
+        # Define joints to measure: (name, p1, vertex, p3, color)
+        JOINTS_TO_MEASURE = [
+            ('L Knee', 'left_hip', 'left_knee', 'left_ankle', (255, 100, 100)),      # Light blue
+            ('R Knee', 'right_hip', 'right_knee', 'right_ankle', (255, 100, 100)),   # Light blue
+            ('L Elbow', 'left_shoulder', 'left_elbow', 'left_wrist', (100, 255, 100)), # Light green
+            ('R Elbow', 'right_shoulder', 'right_elbow', 'right_wrist', (100, 255, 100)), # Light green
+        ]
+
+        for joint_name, p1_name, vertex_name, p3_name, color in JOINTS_TO_MEASURE:
+            p1 = get_normalized_coords(p1_name)
+            vertex = get_normalized_coords(vertex_name)
+            p3 = get_normalized_coords(p3_name)
+
+            if p1 and vertex and p3:
+                angle = calculate_angle_3points(p1, vertex, p3)
+                vertex_px = get_pixel_coords(vertex_name)
+
+                if vertex_px:
+                    # Draw angle arc
+                    # Draw angle value text
+                    text = f"{int(angle)}"
+                    text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+
+                    # Position text slightly offset from joint
+                    offset_x = 10 if 'left' in vertex_name.lower() else -text_size[0] - 10
+                    text_pos = (vertex_px[0] + offset_x, vertex_px[1] - 5)
+
+                    # Draw background for better visibility
+                    cv2.rectangle(
+                        annotated,
+                        (text_pos[0] - 2, text_pos[1] - text_size[1] - 2),
+                        (text_pos[0] + text_size[0] + 2, text_pos[1] + 4),
+                        (0, 0, 0),
+                        -1
+                    )
+
+                    # Draw angle value
+                    cv2.putText(
+                        annotated,
+                        text,
+                        text_pos,
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color,
+                        2
+                    )
+
+                    # Draw small arc to visualize angle
+                    radius = 15
+                    # Calculate arc angles
+                    import math
+                    v1_angle = math.atan2(p1[1] - vertex[1], p1[0] - vertex[0])
+                    v3_angle = math.atan2(p3[1] - vertex[1], p3[0] - vertex[0])
+
+                    start_angle = math.degrees(min(v1_angle, v3_angle))
+                    end_angle = math.degrees(max(v1_angle, v3_angle))
+
+                    cv2.ellipse(
+                        annotated,
+                        vertex_px,
+                        (radius, radius),
+                        0,
+                        start_angle,
+                        end_angle,
+                        color,
+                        2
+                    )
+
     return annotated
 
 
@@ -720,6 +834,7 @@ def generate_skeleton_video(
     output_path: str,
     show_connections: bool = True,
     show_keypoints: bool = True,
+    show_angles: bool = False,
     progress_callback=None
 ) -> bool:
     """
@@ -730,6 +845,7 @@ def generate_skeleton_video(
         output_path: Path for output video
         show_connections: Whether to draw limb connections
         show_keypoints: Whether to draw keypoint circles
+        show_angles: Whether to draw joint angles
         progress_callback: Optional callback(current, total) for progress
 
     Returns:
@@ -769,7 +885,8 @@ def generate_skeleton_video(
                 frame,
                 keypoints_dict,
                 show_connections=show_connections,
-                show_keypoints=show_keypoints
+                show_keypoints=show_keypoints,
+                show_angles=show_angles
             )
         else:
             annotated_frame = frame
@@ -792,6 +909,7 @@ def generate_skeleton_frames(
     max_frames: int = 10,
     show_connections: bool = True,
     show_keypoints: bool = True,
+    show_angles: bool = False,
     progress_callback=None
 ) -> list:
     """
@@ -802,6 +920,7 @@ def generate_skeleton_frames(
         max_frames: Maximum number of frames to generate
         show_connections: Whether to draw limb connections
         show_keypoints: Whether to draw keypoint circles
+        show_angles: Whether to draw joint angles
         progress_callback: Optional callback(current, total) for progress
 
     Returns:
@@ -842,7 +961,8 @@ def generate_skeleton_frames(
                 frame,
                 keypoints_dict,
                 show_connections=show_connections,
-                show_keypoints=show_keypoints
+                show_keypoints=show_keypoints,
+                show_angles=show_angles
             )
         else:
             annotated_frame = frame
@@ -1122,7 +1242,7 @@ if 'current_video_path' not in st.session_state:
     st.session_state['current_video_path'] = None
 
 # Visualization options
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
     show_connections = st.checkbox(
         get_text('show_connections', lang),
@@ -1134,6 +1254,12 @@ with col2:
         get_text('show_keypoints', lang),
         value=True,
         key='show_keypoints'
+    )
+with col3:
+    show_angles = st.checkbox(
+        get_text('show_angles', lang),
+        value=False,
+        key='show_angles'
     )
 
 # Generate visualization if video was uploaded
@@ -1161,6 +1287,7 @@ if uploaded_video:
                 max_frames=12,
                 show_connections=show_connections,
                 show_keypoints=show_keypoints,
+                show_angles=show_angles,
                 progress_callback=update_progress
             )
 
@@ -1209,6 +1336,7 @@ if st.session_state.get('visualization_frames'):
                         output_path,
                         show_connections=show_connections,
                         show_keypoints=show_keypoints,
+                        show_angles=show_angles,
                         progress_callback=update_video_progress
                     )
 
