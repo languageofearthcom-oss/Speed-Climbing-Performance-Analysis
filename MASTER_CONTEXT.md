@@ -3,9 +3,38 @@
 ## Project Overview
 **Goal**: Build an AI-powered system that analyzes speed climbing videos and provides **personalized feedback** to athletes, coaches, and enthusiasts.
 
-**Current Status**: **Phase 4 - Fuzzy Logic Feedback System (Complete)**
+**Current Status**: **Phase 4 Complete** → Phase 5 In Progress
 
-## Project Journey
+---
+
+## 🔗 Repository Information
+
+### GitHub (Public Release)
+- **URL**: https://github.com/airano-ir/speed-climbing-performance-analysis
+- **Branch**: `main` (production-ready, clean)
+- **Excludes**: MASTER_CONTEXT.md, development docs, notebooks
+
+### Gitea (Internal Development)
+- **URL**: https://gitea.airano.ir/dev/Speed-Climbing-Performance-Analysis
+- **Branches**:
+  - `main`: Same as GitHub release
+  - `development`: Includes MASTER_CONTEXT.md for future phase planning
+
+### Docker Deployment (Coolify-Ready)
+```bash
+# Local development
+docker compose up -d
+# Access: http://localhost:8501
+
+# Coolify deployment
+# 1. Connect repository in Coolify
+# 2. Select "Docker Compose" as build type
+# 3. Deploy! (port 8501)
+```
+
+---
+
+## 🏗️ Project Journey
 
 ### Phase 1: Data Collection ✅
 - Downloaded videos from IFSC competitions
@@ -28,19 +57,37 @@
 - Comparison with professional athletes
 - **Camera-independent features only** (angles, ratios, sync)
 
+### Phase 4.5: Production Release ✅ (2025-11-29)
+- Docker/Coolify deployment ready
+- GitHub clean release
+- Bilingual documentation (EN/FA)
+- Example scripts and sample data downloader
+
 ---
 
 ## 🗺️ Future Roadmap
 
-### Phase 5: Web Interface 📋 (Next)
-**Goal**: Create a web app where users can upload videos and get feedback
+### Phase 5: Web Interface 📋 (IN PROGRESS)
+**Goal**: Create a user-facing web app for video analysis feedback
 
+#### 5.1 Analysis Interface (New)
 | Task | Priority | Description |
 |------|----------|-------------|
-| Web UI | High | Simple upload page with results display |
+| Upload Page | High | Allow video/pose file upload |
+| Analysis Progress | High | Show progress during processing |
+| Results Display | High | Display scores, ratings, recommendations |
 | Charts & Graphs | High | Visual representation of scores |
-| Video Player | Medium | Show video with analysis overlay |
 | Export Report | Medium | PDF/Image export of feedback |
+
+#### 5.2 Review Interface Redesign (Existing)
+**Note**: `scripts/review_interface/` is OLD and needs redesign
+
+| Current Issue | Required Change |
+|--------------|-----------------|
+| Designed for developers | Make user-friendly |
+| Race detection focus | Add feedback display |
+| No analysis integration | Connect to FeedbackGenerator |
+| Complex UI | Simplify navigation |
 
 ### Phase 6: Enhanced Visualization 📋
 **Goal**: Add visual feedback overlaid on video
@@ -60,6 +107,8 @@
 | Athlete Count Detection | High | Auto-detect 1 or 2 athletes |
 | Lane Selection | Medium | Let user choose which lane |
 | Better Lane Assignment | Medium | Improve left/right detection |
+
+**After Phase 7**: Create Google Colab notebook for easy access
 
 ### Phase 8: Label Collection 📋
 **Goal**: Collect labels for ML training
@@ -95,7 +144,7 @@
 
 ---
 
-## Architecture
+## 📦 Architecture
 
 ### `speed_climbing` Package
 ```
@@ -122,9 +171,19 @@ speed_climbing/
         └── feedback_generator.py  # Report generation
 ```
 
+### Scripts
+```
+scripts/
+├── review_interface/         # OLD - needs redesign in Phase 5
+│   ├── app.py               # Streamlit main app
+│   └── ...                  # Various modules
+├── download_sample_data.py  # Sample data downloader
+└── batch/                   # Batch processing scripts
+```
+
 ---
 
-## Current Feedback System
+## 🎯 Current Feedback System
 
 ### Valid Features (Camera-Independent)
 ```
@@ -169,7 +228,7 @@ speed_climbing/
 
 ---
 
-## Known Issues
+## ⚠️ Known Issues
 
 ### Single Athlete Videos
 - System always detects 2 lanes (left/right)
@@ -181,13 +240,20 @@ speed_climbing/
 - Cannot measure absolute position on wall
 - **Requires**: Wall detection + camera motion compensation (Phase 10)
 
+### Review Interface (OLD)
+- Located at `scripts/review_interface/`
+- Designed for internal race detection review
+- **Needs redesign** for user-facing analysis display
+- Currently NOT connected to FeedbackGenerator
+
 ---
 
-## Usage
+## 🚀 Usage
 
+### Command Line
 ```bash
-# Analyze a pose file
-python scripts/analyze_video.py pose_file.json --language fa --lane left
+# Analyze a video and get feedback
+python examples/analyze_single_video.py video.mp4 --language fa --lane left
 
 # Options:
 #   --language fa|en    Output language
@@ -195,9 +261,31 @@ python scripts/analyze_video.py pose_file.json --language fa --lane left
 #   --output file.txt   Save report to file
 ```
 
+### Python API
+```python
+from speed_climbing.vision.pose import BlazePoseExtractor
+from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator
+
+# Extract poses
+extractor = BlazePoseExtractor()
+pose_data = extractor.process_video("video.mp4")
+
+# Generate feedback
+generator = FeedbackGenerator(language="fa")
+report = generator.generate_feedback(pose_data, lane="left")
+print(report)
+```
+
+### Docker
+```bash
+# Run web interface
+docker compose up -d
+# Access at http://localhost:8501
+```
+
 ---
 
-## Data Available
+## 📊 Data Available
 
 - **371 samples** from 5 competitions
 - **246 high-quality** samples (extraction quality >= 0.8)
@@ -206,9 +294,17 @@ python scripts/analyze_video.py pose_file.json --language fa --lane left
 
 ---
 
-## Recent Updates
+## 📝 Recent Updates
 
 ### 2025-11-29 (Latest)
+- **Production Release**: Docker/Coolify deployment ready
+- **GitHub Release**: Clean repository at github.com/airano-ir
+- **Gitea Development Branch**: For future phase planning
+- **Documentation**: Comprehensive bilingual README
+- **Examples**: Sample scripts and data downloader
+- **CI/CD**: GitHub Actions for testing and Docker builds
+
+### 2025-11-29 (Earlier)
 - **Camera-Independent Features**: Removed 6 invalid efficiency features
 - **New Categories**: 5 technique-focused categories
 - **Limitation Note**: Added note about camera motion in reports
@@ -219,7 +315,26 @@ python scripts/analyze_video.py pose_file.json --language fa --lane left
 - **Baseline Statistics**: From 371 professional races
 - **Bilingual Output**: Persian/English support
 
-### Previous
-- Race segment detection (variance-based)
-- Feature extraction pipeline
-- Project cleanup
+---
+
+## 🔧 Development Notes
+
+### Next Session TODO (Phase 5)
+1. Create new Streamlit app for user-facing analysis
+2. Integrate FeedbackGenerator with web interface
+3. Add file upload functionality
+4. Design score visualization charts
+5. Consider redesigning review_interface or creating separate app
+
+### Key Files for Phase 5
+- `speed_climbing/analysis/feedback/feedback_generator.py` - Main feedback logic
+- `speed_climbing/analysis/feedback/fuzzy_engine.py` - Fuzzy logic engine
+- `examples/analyze_single_video.py` - CLI example (reference for web)
+- `scripts/review_interface/app.py` - Existing Streamlit app (needs redesign)
+
+### Dependencies
+- `streamlit` - Web interface
+- `mediapipe` - Pose extraction
+- `scikit-fuzzy` - Fuzzy logic
+- `plotly` - Interactive charts
+- `opencv-python` - Video processing
