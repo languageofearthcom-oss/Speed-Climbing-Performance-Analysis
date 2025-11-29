@@ -37,6 +37,7 @@ except ImportError:
 
 from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator, Language, Feedback
 from speed_climbing.analysis.features.extractor import FeatureExtractor
+from speed_climbing.analysis.features.race_detector import RaceSegmentDetector, RaceSegment
 
 
 # =============================================================================
@@ -99,6 +100,24 @@ TRANSLATIONS = {
         'show_angles': 'Show Joint Angles',
         'knee_angle': 'Knee',
         'elbow_angle': 'Elbow',
+        'race_segment': '🏁 Race Segment Detection',
+        'race_start': 'Start Frame',
+        'race_end': 'End Frame',
+        'race_duration': 'Duration',
+        'race_confidence': 'Detection Confidence',
+        'race_method': 'Detection Method',
+        'race_info': 'Only frames during the race are analyzed',
+        'activity_chart': 'Activity Chart',
+        'frames': 'frames',
+        'seconds': 'seconds',
+        'angle_timeline': '📈 Angle Timeline',
+        'angle_over_time': 'Joint Angles Over Time',
+        'left_knee': 'Left Knee',
+        'right_knee': 'Right Knee',
+        'left_elbow': 'Left Elbow',
+        'right_elbow': 'Right Elbow',
+        'angle_deg': 'Angle (degrees)',
+        'time_sec': 'Time (seconds)',
     },
     'fa': {
         'page_title': 'تحلیل سنگنوردی سرعتی',
@@ -155,6 +174,24 @@ TRANSLATIONS = {
         'show_angles': 'نمایش زوایای مفصل',
         'knee_angle': 'زانو',
         'elbow_angle': 'آرنج',
+        'race_segment': '🏁 تشخیص بخش مسابقه',
+        'race_start': 'فریم شروع',
+        'race_end': 'فریم پایان',
+        'race_duration': 'مدت',
+        'race_confidence': 'اطمینان تشخیص',
+        'race_method': 'روش تشخیص',
+        'race_info': 'فقط فریم‌های زمان مسابقه تحلیل می‌شوند',
+        'activity_chart': 'نمودار فعالیت',
+        'frames': 'فریم',
+        'seconds': 'ثانیه',
+        'angle_timeline': '📈 نمودار زوایا در زمان',
+        'angle_over_time': 'زوایای مفاصل در طول زمان',
+        'left_knee': 'زانوی چپ',
+        'right_knee': 'زانوی راست',
+        'left_elbow': 'آرنج چپ',
+        'right_elbow': 'آرنج راست',
+        'angle_deg': 'زاویه (درجه)',
+        'time_sec': 'زمان (ثانیه)',
     }
 }
 
@@ -185,6 +222,12 @@ if 'language' not in st.session_state:
 
 if 'analysis_result' not in st.session_state:
     st.session_state['analysis_result'] = None
+
+if 'pose_data' not in st.session_state:
+    st.session_state['pose_data'] = None
+
+if 'selected_lane' not in st.session_state:
+    st.session_state['selected_lane'] = 'left'
 
 
 # =============================================================================
@@ -419,6 +462,298 @@ def run_analysis(features: Dict[str, float], language: str) -> Optional[Feedback
         st.error(f"Analysis error: {e}")
         st.code(traceback.format_exc())
         return None
+
+
+def detect_race_segment_from_poses(pose_data: Dict, lane: str = 'left', fps: float = 30.0) -> Optional[tuple]:
+    """
+    Detect race segment from pose data.
+
+    Returns:
+        Tuple of (RaceSegment, raw_activity, smoothed_activity) or None
+    """
+    try:
+        frames = pose_data.get('frames', [])
+        if not frames:
+            return None
+
+        detector = RaceSegmentDetector(fps=fps)
+        segment = detector.detect(frames, lane)
+
+        if segment is None:
+            return None
+
+        # Get activity curves for visualization
+        raw_activity, smoothed_activity = detector.get_activity_curve(frames, lane)
+
+        return segment, raw_activity, smoothed_activity
+    except Exception as e:
+        st.warning(f"Race detection error: {e}")
+        return None
+
+
+def create_activity_chart(
+    raw_activity,
+    smoothed_activity,
+    segment: RaceSegment,
+    fps: float,
+    lang: str
+) -> go.Figure:
+    """Create activity chart with race segment markers."""
+    import numpy as np
+
+    n = len(raw_activity)
+    frames = np.arange(n)
+    time_s = frames / fps
+
+    fig = go.Figure()
+
+    # Raw activity (lighter)
+    fig.add_trace(go.Scatter(
+        x=time_s,
+        y=raw_activity,
+        mode='lines',
+        name='Raw Activity' if lang == 'en' else 'فعالیت خام',
+        line=dict(color='rgba(100, 149, 237, 0.3)', width=1),
+        hoverinfo='skip'
+    ))
+
+    # Smoothed activity
+    fig.add_trace(go.Scatter(
+        x=time_s,
+        y=smoothed_activity,
+        mode='lines',
+        name='Activity' if lang == 'en' else 'فعالیت',
+        line=dict(color='#3498db', width=2)
+    ))
+
+    # Start marker
+    start_time = segment.start_frame / fps
+    fig.add_vline(
+        x=start_time,
+        line_dash="dash",
+        line_color="green",
+        annotation_text="START" if lang == 'en' else "شروع",
+        annotation_position="top left"
+    )
+
+    # End marker
+    end_time = segment.end_frame / fps
+    fig.add_vline(
+        x=end_time,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="END" if lang == 'en' else "پایان",
+        annotation_position="top right"
+    )
+
+    # Highlight racing region
+    fig.add_vrect(
+        x0=start_time,
+        x1=end_time,
+        fillcolor="rgba(0, 255, 0, 0.1)",
+        layer="below",
+        line_width=0
+    )
+
+    fig.update_layout(
+        title=get_text('activity_chart', lang),
+        xaxis_title='Time (s)' if lang == 'en' else 'زمان (ثانیه)',
+        yaxis_title='Activity' if lang == 'en' else 'فعالیت',
+        height=300,
+        margin=dict(l=20, r=20, t=40, b=40),
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    return fig
+
+
+def extract_angles_per_frame(
+    pose_data: Dict,
+    lane: str = 'left',
+    fps: float = 30.0
+) -> Optional[Dict]:
+    """
+    Extract joint angles for each frame in the pose data.
+
+    Returns:
+        Dictionary with time and angle arrays for each joint
+    """
+    import numpy as np
+
+    frames = pose_data.get('frames', [])
+    if not frames:
+        return None
+
+    n = len(frames)
+    time_s = np.arange(n) / fps
+
+    # Initialize arrays
+    left_knee_angles = np.full(n, np.nan)
+    right_knee_angles = np.full(n, np.nan)
+    left_elbow_angles = np.full(n, np.nan)
+    right_elbow_angles = np.full(n, np.nan)
+
+    def get_kp(frame_data, kp_name):
+        """Get keypoint coordinates from frame data."""
+        climber_key = f'{lane}_climber'
+        climber = frame_data.get(climber_key)
+        if not climber or not climber.get('has_detection'):
+            return None
+        keypoints = climber.get('keypoints', {})
+        kp = keypoints.get(kp_name)
+        if kp is None:
+            return None
+        conf = kp.get('visibility', kp.get('confidence', 0))
+        if conf < 0.5:
+            return None
+        return (kp.get('x', 0), kp.get('y', 0))
+
+    def calc_angle(p1, p2, p3):
+        """Calculate angle at p2."""
+        if p1 is None or p2 is None or p3 is None:
+            return np.nan
+
+        v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
+        v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
+
+        norm1 = np.linalg.norm(v1)
+        norm2 = np.linalg.norm(v2)
+        if norm1 < 1e-10 or norm2 < 1e-10:
+            return np.nan
+
+        cos_angle = np.dot(v1, v2) / (norm1 * norm2)
+        cos_angle = np.clip(cos_angle, -1.0, 1.0)
+        angle = np.arccos(cos_angle)
+        return np.degrees(angle)
+
+    # Extract angles for each frame
+    for i, frame in enumerate(frames):
+        # Left knee: hip-knee-ankle
+        left_hip = get_kp(frame, 'left_hip')
+        left_knee = get_kp(frame, 'left_knee')
+        left_ankle = get_kp(frame, 'left_ankle')
+        left_knee_angles[i] = calc_angle(left_hip, left_knee, left_ankle)
+
+        # Right knee
+        right_hip = get_kp(frame, 'right_hip')
+        right_knee = get_kp(frame, 'right_knee')
+        right_ankle = get_kp(frame, 'right_ankle')
+        right_knee_angles[i] = calc_angle(right_hip, right_knee, right_ankle)
+
+        # Left elbow: shoulder-elbow-wrist
+        left_shoulder = get_kp(frame, 'left_shoulder')
+        left_elbow = get_kp(frame, 'left_elbow')
+        left_wrist = get_kp(frame, 'left_wrist')
+        left_elbow_angles[i] = calc_angle(left_shoulder, left_elbow, left_wrist)
+
+        # Right elbow
+        right_shoulder = get_kp(frame, 'right_shoulder')
+        right_elbow = get_kp(frame, 'right_elbow')
+        right_wrist = get_kp(frame, 'right_wrist')
+        right_elbow_angles[i] = calc_angle(right_shoulder, right_elbow, right_wrist)
+
+    return {
+        'time': time_s,
+        'left_knee': left_knee_angles,
+        'right_knee': right_knee_angles,
+        'left_elbow': left_elbow_angles,
+        'right_elbow': right_elbow_angles
+    }
+
+
+def create_angle_timeline_chart(
+    angle_data: Dict,
+    segment: Optional[RaceSegment],
+    fps: float,
+    lang: str
+) -> go.Figure:
+    """
+    Create a chart showing joint angles over time.
+
+    Args:
+        angle_data: Dictionary with time and angle arrays
+        segment: Race segment for highlighting
+        fps: Frames per second
+        lang: Language for labels
+
+    Returns:
+        Plotly figure
+    """
+    import numpy as np
+
+    time_s = angle_data['time']
+
+    fig = go.Figure()
+
+    # Color scheme for joints
+    colors = {
+        'left_knee': '#e74c3c',   # Red
+        'right_knee': '#e67e22',  # Orange
+        'left_elbow': '#3498db',  # Blue
+        'right_elbow': '#9b59b6', # Purple
+    }
+
+    labels = {
+        'left_knee': get_text('left_knee', lang),
+        'right_knee': get_text('right_knee', lang),
+        'left_elbow': get_text('left_elbow', lang),
+        'right_elbow': get_text('right_elbow', lang),
+    }
+
+    # Add traces for each joint
+    for joint_key in ['left_knee', 'right_knee', 'left_elbow', 'right_elbow']:
+        angles = angle_data[joint_key]
+
+        # Apply simple smoothing to reduce noise
+        window = 5
+        smoothed = np.convolve(angles, np.ones(window)/window, mode='same')
+
+        fig.add_trace(go.Scatter(
+            x=time_s,
+            y=smoothed,
+            mode='lines',
+            name=labels[joint_key],
+            line=dict(color=colors[joint_key], width=2),
+            hovertemplate=f"{labels[joint_key]}: %{{y:.1f}}°<extra></extra>"
+        ))
+
+    # Highlight race segment if available
+    if segment:
+        start_time = segment.start_frame / fps
+        end_time = segment.end_frame / fps
+
+        fig.add_vrect(
+            x0=start_time,
+            x1=end_time,
+            fillcolor="rgba(0, 255, 0, 0.1)",
+            layer="below",
+            line_width=0,
+            annotation_text="Racing" if lang == 'en' else "مسابقه",
+            annotation_position="top left"
+        )
+
+    fig.update_layout(
+        title=get_text('angle_over_time', lang),
+        xaxis_title=get_text('time_sec', lang),
+        yaxis_title=get_text('angle_deg', lang),
+        height=400,
+        margin=dict(l=20, r=20, t=60, b=40),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        hovermode='x unified'
+    )
+
+    # Set reasonable Y-axis range for angles
+    fig.update_yaxes(range=[0, 180])
+
+    return fig
 
 
 # =============================================================================
@@ -1040,6 +1375,8 @@ if st.button(get_text('analyze_button', lang), type="primary", use_container_wid
             pose_data = load_pose_data(pose_content)
 
             if pose_data:
+                st.session_state['pose_data'] = pose_data
+                st.session_state['selected_lane'] = lane
                 features = extract_features_from_poses(pose_data, lane)
                 if features:
                     feedback = run_analysis(features, lang)
@@ -1068,6 +1405,8 @@ if st.button(get_text('analyze_button', lang), type="primary", use_container_wid
             Path(tmp_path).unlink(missing_ok=True)
 
             if pose_data:
+                st.session_state['pose_data'] = pose_data
+                st.session_state['selected_lane'] = 'left'
                 progress_bar.progress(100, text="Analyzing features...")
 
                 # For uploaded videos, always use 'left' lane (single athlete)
@@ -1229,6 +1568,124 @@ if st.session_state['analysis_result']:
 
 
 # =============================================================================
+# RACE SEGMENT SECTION
+# =============================================================================
+
+if st.session_state.get('pose_data') and st.session_state.get('analysis_result'):
+    st.markdown("---")
+
+    with st.expander(get_text('race_segment', lang), expanded=False):
+        pose_data = st.session_state['pose_data']
+        selected_lane = st.session_state.get('selected_lane', 'left')
+        fps = pose_data.get('metadata', {}).get('fps', 30.0)
+
+        # Detect race segment
+        race_result = detect_race_segment_from_poses(pose_data, selected_lane, fps)
+
+        if race_result:
+            segment, raw_activity, smoothed_activity = race_result
+
+            # Display race segment info
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric(
+                    get_text('race_start', lang),
+                    f"{segment.start_frame}"
+                )
+
+            with col2:
+                st.metric(
+                    get_text('race_end', lang),
+                    f"{segment.end_frame}"
+                )
+
+            with col3:
+                duration_frames = segment.end_frame - segment.start_frame
+                duration_seconds = duration_frames / fps if fps > 0 else 0
+                st.metric(
+                    get_text('race_duration', lang),
+                    f"{duration_seconds:.2f} {get_text('seconds', lang)}"
+                )
+
+            with col4:
+                confidence_pct = segment.confidence * 100
+                st.metric(
+                    get_text('race_confidence', lang),
+                    f"{confidence_pct:.0f}%"
+                )
+
+            # Info about race segment usage
+            st.info(f"ℹ️ {get_text('race_info', lang)}")
+
+            # Activity chart
+            if PLOTLY_AVAILABLE:
+                st.markdown(f"### {get_text('activity_chart', lang)}")
+                activity_chart = create_activity_chart(
+                    raw_activity,
+                    smoothed_activity,
+                    segment,
+                    fps,
+                    lang
+                )
+                st.plotly_chart(activity_chart, use_container_width=True)
+        else:
+            st.warning("Race segment detection not available for this data.")
+
+    # ==========================================================================
+    # ANGLE TIMELINE SECTION
+    # ==========================================================================
+    st.markdown("---")
+
+    with st.expander(get_text('angle_timeline', lang), expanded=False):
+        pose_data = st.session_state['pose_data']
+        selected_lane = st.session_state.get('selected_lane', 'left')
+        fps = pose_data.get('metadata', {}).get('fps', 30.0)
+
+        # Extract angles per frame
+        angle_data = extract_angles_per_frame(pose_data, selected_lane, fps)
+
+        if angle_data:
+            # Get race segment for highlighting (if available)
+            race_result = detect_race_segment_from_poses(pose_data, selected_lane, fps)
+            segment = race_result[0] if race_result else None
+
+            # Create and display angle timeline chart
+            if PLOTLY_AVAILABLE:
+                angle_chart = create_angle_timeline_chart(
+                    angle_data,
+                    segment,
+                    fps,
+                    lang
+                )
+                st.plotly_chart(angle_chart, use_container_width=True)
+
+                # Show some statistics
+                import numpy as np
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    avg_lk = np.nanmean(angle_data['left_knee'])
+                    st.metric(get_text('left_knee', lang), f"{avg_lk:.1f}°")
+
+                with col2:
+                    avg_rk = np.nanmean(angle_data['right_knee'])
+                    st.metric(get_text('right_knee', lang), f"{avg_rk:.1f}°")
+
+                with col3:
+                    avg_le = np.nanmean(angle_data['left_elbow'])
+                    st.metric(get_text('left_elbow', lang), f"{avg_le:.1f}°")
+
+                with col4:
+                    avg_re = np.nanmean(angle_data['right_elbow'])
+                    st.metric(get_text('right_elbow', lang), f"{avg_re:.1f}°")
+            else:
+                st.info("Plotly required for angle timeline visualization.")
+        else:
+            st.warning("Angle data not available for this pose file.")
+
+
+# =============================================================================
 # VISUALIZATION SECTION
 # =============================================================================
 
@@ -1373,8 +1830,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Speed Climbing Performance Analysis v1.1 (Phase 6)<br>
-    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۱
+    Speed Climbing Performance Analysis v1.3 (Phase 6)<br>
+    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۳
     </div>
     """,
     unsafe_allow_html=True

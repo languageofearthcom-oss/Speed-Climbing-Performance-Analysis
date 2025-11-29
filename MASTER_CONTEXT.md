@@ -87,8 +87,8 @@ docker compose up -d
 |------|--------|-------------|
 | Keypoint Overlay | ✅ | Draw skeleton on video frames |
 | Angle Indicators | ✅ | Show joint angles on video |
-| Race Segment Display | 📋 | Show start/end frame markers |
-| Score Timeline | 📋 | Graph of metrics over time |
+| Race Segment Display | ✅ | Show start/end frame markers with activity chart |
+| Score Timeline | ✅ | Graph of joint angles over time with race segment highlight |
 | Comparison View | 📋 | Side-by-side with reference athlete |
 
 ### Phase 7: Single Athlete Detection 📋
@@ -287,12 +287,18 @@ docker compose up -d
 
 ## 📝 Recent Updates
 
-### 2025-11-29 (Latest)
-- **Phase 5 Complete**: Web interface with full analysis functionality
+### 2025-11-29 (Latest - Phase 6 Complete)
+- **Skeleton Overlay**: Draw skeleton on video frames with keypoints ✅
+- **Joint Angles**: Show knee/elbow angles with arcs and labels ✅
+- **Race Segment Display**: Activity chart with start/end markers ✅
+- **Score Timeline**: Graph of joint angles over time ✅
+- **Only Remaining**: Comparison View (side-by-side with reference athlete)
+
+### 2025-11-29 (Phase 5 Complete)
+- **Web Interface**: Full analysis functionality with Streamlit
 - **Export Formats**: TXT, HTML (for PDF), JSON
 - **Bilingual UI**: Full Persian/English support in web app
 - **Charts**: Plotly gauge, radar, and bar charts
-- **Phase 6 Started**: Skeleton overlay visualization
 
 ### 2025-11-29 (Production Release)
 - **Camera-Independent Features**: Removed 6 invalid efficiency features
@@ -309,10 +315,12 @@ docker compose up -d
 
 ## 🔧 Development Notes
 
-### Next Session TODO (Phase 6)
-1. Add angle indicators on video overlay
-2. Add score timeline graph
-3. Consider comparison view feature
+### Next Session TODO (Phase 6/7)
+1. ~~Add angle indicators on video overlay~~ ✅ Done
+2. ~~Add race segment display~~ ✅ Done
+3. ~~Add score timeline graph~~ ✅ Done
+4. Consider comparison view feature (optional)
+5. Phase 7: Auto-detect single/dual athlete videos
 
 ### Key Files for Phase 6
 - `scripts/analysis_app/app.py` - Main web interface with skeleton overlay
