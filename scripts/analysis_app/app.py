@@ -392,6 +392,138 @@ def run_analysis(features: Dict[str, float], language: str) -> Optional[Feedback
 
 
 # =============================================================================
+# REPORT GENERATION FUNCTIONS
+# =============================================================================
+
+def generate_html_report(feedback: Feedback, lang: str) -> str:
+    """Generate an HTML report that can be printed as PDF."""
+    is_rtl = lang == 'fa'
+    dir_attr = 'rtl' if is_rtl else 'ltr'
+
+    # Category names
+    category_names = {
+        'coordination': 'هماهنگی اندام‌ها' if is_rtl else 'Coordination',
+        'leg_technique': 'تکنیک پا' if is_rtl else 'Leg Technique',
+        'arm_technique': 'تکنیک دست' if is_rtl else 'Arm Technique',
+        'body_position': 'وضعیت بدن' if is_rtl else 'Body Position',
+        'reach': 'دسترسی و کشش' if is_rtl else 'Reach',
+    }
+
+    # Build category scores HTML
+    category_html = ""
+    for cat_key, score in feedback.category_scores.items():
+        cat_name = category_names.get(cat_key, cat_key)
+        bar_width = int(score)
+        color = '#1dd1a1' if score >= 70 else '#feca57' if score >= 50 else '#ff6b6b'
+        category_html += f"""
+        <div style="margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>{cat_name}</span>
+                <span>{score:.0f}/100</span>
+            </div>
+            <div style="background: #eee; border-radius: 5px; height: 20px;">
+                <div style="background: {color}; width: {bar_width}%; height: 100%; border-radius: 5px;"></div>
+            </div>
+        </div>
+        """
+
+    # Build strengths HTML
+    strengths_html = ""
+    for s in feedback.strengths:
+        strengths_html += f"<li style='color: green;'>✓ {s['text']}</li>"
+
+    # Build improvements HTML
+    improvements_html = ""
+    for imp in feedback.improvements:
+        priority = "🔴" if imp.get('priority') == 'high' else "🟡"
+        improvements_html += f"<li>{priority} {imp['text']}</li>"
+
+    # Build recommendations HTML
+    recommendations_html = ""
+    for i, rec in enumerate(feedback.recommendations, 1):
+        recommendations_html += f"<li>{i}. {rec['action']}</li>"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html dir="{dir_attr}" lang="{lang}">
+    <head>
+        <meta charset="UTF-8">
+        <title>{'گزارش تحلیل سنگنوردی سرعتی' if is_rtl else 'Speed Climbing Analysis Report'}</title>
+        <style>
+            body {{
+                font-family: {'Tahoma, Arial' if is_rtl else 'Arial, sans-serif'};
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                line-height: 1.6;
+            }}
+            h1 {{ color: #2c3e50; text-align: center; }}
+            h2 {{ color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 5px; }}
+            .score-box {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                border-radius: 15px;
+                text-align: center;
+                margin: 20px 0;
+            }}
+            .score-number {{ font-size: 48px; font-weight: bold; }}
+            .score-label {{ font-size: 18px; opacity: 0.9; }}
+            .section {{ margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; }}
+            ul {{ padding-left: 20px; }}
+            li {{ margin: 8px 0; }}
+            .note {{ font-size: 12px; color: #7f8c8d; text-align: center; margin-top: 30px; }}
+            @media print {{
+                body {{ padding: 0; }}
+                .no-print {{ display: none; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>{'📊 گزارش تحلیل تکنیک سنگنوردی سرعتی' if is_rtl else '📊 Speed Climbing Technique Analysis Report'}</h1>
+
+        <div class="score-box">
+            <div class="score-number">{feedback.overall_score:.0f}</div>
+            <div class="score-label">{'امتیاز کلی از ۱۰۰ • سطح: ' if is_rtl else 'Overall Score out of 100 • Level: '}{feedback.overall_level}</div>
+        </div>
+
+        <h2>{'📈 امتیاز دسته‌ها' if is_rtl else '📈 Category Scores'}</h2>
+        <div class="section">
+            {category_html}
+        </div>
+
+        <h2>{'💪 نقاط قوت' if is_rtl else '💪 Strengths'}</h2>
+        <div class="section">
+            <ul>{strengths_html}</ul>
+        </div>
+
+        <h2>{'⚠️ فرصت‌های بهبود' if is_rtl else '⚠️ Areas for Improvement'}</h2>
+        <div class="section">
+            <ul>{improvements_html}</ul>
+        </div>
+
+        <h2>{'🎯 توصیه‌های تمرینی' if is_rtl else '🎯 Training Recommendations'}</h2>
+        <div class="section">
+            <ul>{recommendations_html}</ul>
+        </div>
+
+        <h2>{'📊 مقایسه با حرفه‌ای‌ها' if is_rtl else '📊 Professional Comparison'}</h2>
+        <div class="section">
+            <p>{feedback.comparison_text}</p>
+        </div>
+
+        <p class="note">
+            {'این گزارش توسط سیستم تحلیل عملکرد سنگنوردی سرعتی تولید شده است.' if is_rtl else 'Generated by Speed Climbing Performance Analysis System.'}
+            <br>
+            {'توجه: تحلیل بر اساس زوایای بدن و هماهنگی است. سرعت واقعی صعود به دلیل حرکت دوربین قابل اندازه‌گیری نیست.' if is_rtl else 'Note: Analysis is based on body angles and coordination. Actual climbing speed cannot be measured due to camera motion.'}
+        </p>
+    </body>
+    </html>
+    """
+    return html
+
+
+# =============================================================================
 # VISUALIZATION FUNCTIONS
 # =============================================================================
 
@@ -664,18 +796,52 @@ if st.session_state['analysis_result']:
     st.markdown("---")
 
     # Export Report
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        # Generate text report
-        lang_enum = Language.PERSIAN if lang == 'fa' else Language.ENGLISH
-        generator = FeedbackGenerator(language=lang_enum)
-        report_text = generator.format_report(feedback)
+    st.subheader(get_text('export_report', lang))
 
+    # Generate text report
+    lang_enum = Language.PERSIAN if lang == 'fa' else Language.ENGLISH
+    generator = FeedbackGenerator(language=lang_enum)
+    report_text = generator.format_report(feedback)
+
+    # Generate HTML report for PDF printing
+    html_report = generate_html_report(feedback, lang)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
         st.download_button(
-            label=get_text('export_report', lang),
+            label="📄 " + ("دانلود TXT" if lang == 'fa' else "Download TXT"),
             data=report_text.encode('utf-8'),
             file_name=f"climbing_analysis_report_{lang}.txt",
             mime="text/plain",
+            use_container_width=True
+        )
+
+    with col2:
+        st.download_button(
+            label="🌐 " + ("دانلود HTML (برای PDF)" if lang == 'fa' else "Download HTML (for PDF)"),
+            data=html_report.encode('utf-8'),
+            file_name=f"climbing_analysis_report_{lang}.html",
+            mime="text/html",
+            use_container_width=True
+        )
+
+    with col3:
+        # Generate JSON data export
+        json_export = {
+            'overall_score': feedback.overall_score,
+            'overall_level': feedback.overall_level,
+            'category_scores': feedback.category_scores,
+            'strengths': feedback.strengths,
+            'improvements': feedback.improvements,
+            'recommendations': feedback.recommendations,
+            'comparison': feedback.comparison_text
+        }
+        st.download_button(
+            label="📊 " + ("دانلود JSON" if lang == 'fa' else "Download JSON"),
+            data=json.dumps(json_export, ensure_ascii=False, indent=2).encode('utf-8'),
+            file_name=f"climbing_analysis_data_{lang}.json",
+            mime="application/json",
             use_container_width=True
         )
 
