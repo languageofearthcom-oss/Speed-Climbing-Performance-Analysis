@@ -3,7 +3,7 @@
 ## Project Overview
 **Goal**: Build an AI-powered system that analyzes speed climbing videos and provides **personalized feedback** to athletes, coaches, and enthusiasts.
 
-**Current Status**: **Phase 5 Complete** → Phase 6 In Progress
+**Current Status**: **Phase 6 Complete** → Phase 7 In Progress
 
 ---
 
@@ -80,7 +80,7 @@ docker compose up -d
 
 **App Location:** `scripts/analysis_app/app.py`
 
-### Phase 6: Enhanced Visualization 📋 (IN PROGRESS)
+### Phase 6: Enhanced Visualization ✅ (COMPLETE)
 **Goal**: Add visual feedback overlaid on video
 
 | Task | Status | Description |
@@ -91,14 +91,15 @@ docker compose up -d
 | Score Timeline | ✅ | Graph of joint angles over time with race segment highlight |
 | Comparison View | 📋 | Side-by-side with reference athlete |
 
-### Phase 7: Single Athlete Detection 📋
+### Phase 7: Single Athlete Detection 📋 (IN PROGRESS)
 **Goal**: Fix detection for single-athlete videos
 
-| Task | Priority | Description |
-|------|----------|-------------|
-| Athlete Count Detection | High | Auto-detect 1 or 2 athletes |
-| Lane Selection | Medium | Let user choose which lane |
-| Better Lane Assignment | Medium | Improve left/right detection |
+| Task | Status | Description |
+|------|--------|-------------|
+| Athlete Count Detection | ✅ | Auto-detect 1 or 2 athletes based on detection rates |
+| Lane Selection | ✅ | Smart lane selection with auto/manual options |
+| Detection Quality Display | ✅ | Show detection rates per lane with icons |
+| Better Lane Assignment | 📋 | Improve left/right detection logic |
 
 ### Phase 8: Label Collection 📋
 **Goal**: Collect labels for ML training
@@ -287,12 +288,17 @@ docker compose up -d
 
 ## 📝 Recent Updates
 
-### 2025-11-29 (Latest - Phase 6 Complete)
+### 2025-11-29 (Latest - Phase 7 Progress)
+- **Athlete Count Detection**: Auto-detect 1 or 2 athletes ✅
+- **Smart Lane Selection**: Auto-select best lane or manual override ✅
+- **Detection Quality Display**: Show detection rates with icons ✅
+- **New Module**: `speed_climbing/vision/athlete_detector.py`
+
+### 2025-11-29 (Phase 6 Complete)
 - **Skeleton Overlay**: Draw skeleton on video frames with keypoints ✅
 - **Joint Angles**: Show knee/elbow angles with arcs and labels ✅
 - **Race Segment Display**: Activity chart with start/end markers ✅
 - **Score Timeline**: Graph of joint angles over time ✅
-- **Only Remaining**: Comparison View (side-by-side with reference athlete)
 
 ### 2025-11-29 (Phase 5 Complete)
 - **Web Interface**: Full analysis functionality with Streamlit

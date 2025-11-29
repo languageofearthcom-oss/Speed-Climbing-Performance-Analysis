@@ -38,6 +38,7 @@ except ImportError:
 from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator, Language, Feedback
 from speed_climbing.analysis.features.extractor import FeatureExtractor
 from speed_climbing.analysis.features.race_detector import RaceSegmentDetector, RaceSegment
+from speed_climbing.vision.athlete_detector import AthleteCountDetector, detect_athlete_count, get_valid_lanes
 
 
 # =============================================================================
@@ -118,6 +119,18 @@ TRANSLATIONS = {
         'right_elbow': 'Right Elbow',
         'angle_deg': 'Angle (degrees)',
         'time_sec': 'Time (seconds)',
+        'athlete_detection': '👥 Athlete Detection',
+        'athletes_found': 'Athletes Found',
+        'detection_rate': 'Detection Rate',
+        'recommended_lane': 'Recommended Lane',
+        'single_athlete': 'Single Athlete',
+        'dual_athlete': 'Two Athletes',
+        'auto_select': 'Auto-select best lane',
+        'manual_select': 'Manual lane selection',
+        'lane_quality': 'Lane Quality',
+        'good_detection': 'Good Detection',
+        'poor_detection': 'Poor Detection',
+        'no_detection': 'No Detection',
     },
     'fa': {
         'page_title': 'تحلیل سنگنوردی سرعتی',
@@ -192,6 +205,18 @@ TRANSLATIONS = {
         'right_elbow': 'آرنج راست',
         'angle_deg': 'زاویه (درجه)',
         'time_sec': 'زمان (ثانیه)',
+        'athlete_detection': '👥 تشخیص ورزشکار',
+        'athletes_found': 'تعداد ورزشکار',
+        'detection_rate': 'نرخ تشخیص',
+        'recommended_lane': 'مسیر پیشنهادی',
+        'single_athlete': 'تک ورزشکار',
+        'dual_athlete': 'دو ورزشکار',
+        'auto_select': 'انتخاب خودکار بهترین مسیر',
+        'manual_select': 'انتخاب دستی مسیر',
+        'lane_quality': 'کیفیت مسیر',
+        'good_detection': 'تشخیص خوب',
+        'poor_detection': 'تشخیص ضعیف',
+        'no_detection': 'بدون تشخیص',
     }
 }
 
@@ -228,6 +253,12 @@ if 'pose_data' not in st.session_state:
 
 if 'selected_lane' not in st.session_state:
     st.session_state['selected_lane'] = 'left'
+
+if 'athlete_detection' not in st.session_state:
+    st.session_state['athlete_detection'] = None
+
+if 'auto_lane_select' not in st.session_state:
+    st.session_state['auto_lane_select'] = True
 
 
 # =============================================================================
@@ -304,16 +335,110 @@ with col3:
         key='pose_uploader'
     )
 
-# Lane selection
+# Lane selection with athlete detection
 st.markdown("")
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    lane = st.radio(
-        get_text('select_lane', lang),
-        options=['left', 'right'],
-        format_func=lambda x: get_text('left_lane' if x == 'left' else 'right_lane', lang),
-        horizontal=True
-    )
+
+# Check if we have pose data to analyze for athlete detection
+temp_pose_data = None
+if uploaded_pose:
+    try:
+        pose_content = uploaded_pose.getvalue().decode('utf-8')
+        temp_pose_data = json.loads(pose_content)
+        if 'frames' not in temp_pose_data:
+            temp_pose_data = None
+    except:
+        temp_pose_data = None
+
+# Detect athletes if pose data is available
+if temp_pose_data:
+    detection_result = detect_athlete_count(temp_pose_data)
+    st.session_state['athlete_detection'] = detection_result
+
+    # Show detection info
+    with st.expander(get_text('athlete_detection', lang), expanded=True):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if detection_result.athlete_count == 1:
+                st.metric(
+                    get_text('athletes_found', lang),
+                    get_text('single_athlete', lang)
+                )
+            elif detection_result.athlete_count == 2:
+                st.metric(
+                    get_text('athletes_found', lang),
+                    get_text('dual_athlete', lang)
+                )
+            else:
+                st.metric(
+                    get_text('athletes_found', lang),
+                    "?"
+                )
+
+        with col2:
+            # Left lane quality
+            left_pct = detection_result.left_detection_rate * 100
+            if left_pct >= 50:
+                left_status = f"✅ {left_pct:.0f}%"
+            elif left_pct >= 25:
+                left_status = f"⚠️ {left_pct:.0f}%"
+            else:
+                left_status = f"❌ {left_pct:.0f}%"
+            st.metric(f"{get_text('left_lane', lang)}", left_status)
+
+        with col3:
+            # Right lane quality
+            right_pct = detection_result.right_detection_rate * 100
+            if right_pct >= 50:
+                right_status = f"✅ {right_pct:.0f}%"
+            elif right_pct >= 25:
+                right_status = f"⚠️ {right_pct:.0f}%"
+            else:
+                right_status = f"❌ {right_pct:.0f}%"
+            st.metric(f"{get_text('right_lane', lang)}", right_status)
+
+        # Recommendation
+        st.info(f"💡 {detection_result.recommendation}")
+
+        # Lane selection with auto option
+        col1, col2 = st.columns(2)
+        with col1:
+            auto_select = st.checkbox(
+                get_text('auto_select', lang),
+                value=st.session_state['auto_lane_select'],
+                key='auto_lane_checkbox'
+            )
+            st.session_state['auto_lane_select'] = auto_select
+
+        with col2:
+            if auto_select:
+                # Auto-select the recommended lane
+                recommended = detection_result.primary_lane
+                if recommended == 'both':
+                    lane = 'left' if detection_result.left_detection_rate >= detection_result.right_detection_rate else 'right'
+                elif recommended in ['left', 'right']:
+                    lane = recommended
+                else:
+                    lane = 'left'
+                st.markdown(f"**{get_text('recommended_lane', lang)}:** {get_text(f'{lane}_lane', lang)}")
+            else:
+                lane = st.radio(
+                    get_text('select_lane', lang),
+                    options=['left', 'right'],
+                    format_func=lambda x: get_text('left_lane' if x == 'left' else 'right_lane', lang),
+                    horizontal=True,
+                    key='manual_lane_radio'
+                )
+else:
+    # Simple lane selection when no pose data
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        lane = st.radio(
+            get_text('select_lane', lang),
+            options=['left', 'right'],
+            format_func=lambda x: get_text('left_lane' if x == 'left' else 'right_lane', lang),
+            horizontal=True
+        )
 
 st.markdown("---")
 
@@ -1830,8 +1955,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Speed Climbing Performance Analysis v1.3 (Phase 6)<br>
-    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۳
+    Speed Climbing Performance Analysis v1.4 (Phase 7)<br>
+    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۴
     </div>
     """,
     unsafe_allow_html=True
