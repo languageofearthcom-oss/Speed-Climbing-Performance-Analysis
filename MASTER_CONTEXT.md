@@ -3,7 +3,7 @@
 ## Project Overview
 **Goal**: Build an AI-powered system that analyzes speed climbing videos and provides **personalized feedback** to athletes, coaches, and enthusiasts.
 
-**Current Status**: **Phase 4 Complete** → Phase 5 In Progress
+**Current Status**: **Phase 5 Complete** → Phase 6 In Progress
 
 ---
 
@@ -67,37 +67,28 @@ docker compose up -d
 
 ## 🗺️ Future Roadmap
 
-### Phase 5: Web Interface 📋 (IN PROGRESS)
+### Phase 5: Web Interface ✅ (COMPLETE)
 **Goal**: Create a user-facing web app for video analysis feedback
 
-#### 5.1 Analysis Interface (New)
-| Task | Priority | Description |
-|------|----------|-------------|
-| Upload Page | High | Allow video/pose file upload |
-| Analysis Progress | High | Show progress during processing |
-| Results Display | High | Display scores, ratings, recommendations |
-| Charts & Graphs | High | Visual representation of scores |
-| Export Report | Medium | PDF/Image export of feedback |
+**Completed Features:**
+- ✅ Upload Page: Video and pose file upload
+- ✅ Analysis Progress: Real-time progress bar during processing
+- ✅ Results Display: Scores, ratings, recommendations with Plotly charts
+- ✅ Charts & Graphs: Gauge chart, radar chart, category bars
+- ✅ Export Report: TXT, HTML (for PDF), JSON formats
+- ✅ Bilingual: Full Persian/English support
 
-#### 5.2 Review Interface Redesign (Existing)
-**Note**: `scripts/review_interface/` is OLD and needs redesign
+**App Location:** `scripts/analysis_app/app.py`
 
-| Current Issue | Required Change |
-|--------------|-----------------|
-| Designed for developers | Make user-friendly |
-| Race detection focus | Add feedback display |
-| No analysis integration | Connect to FeedbackGenerator |
-| Complex UI | Simplify navigation |
-
-### Phase 6: Enhanced Visualization 📋
+### Phase 6: Enhanced Visualization 📋 (IN PROGRESS)
 **Goal**: Add visual feedback overlaid on video
 
-| Task | Priority | Description |
-|------|----------|-------------|
-| Keypoint Overlay | High | Draw skeleton on video frames |
-| Angle Indicators | Medium | Show joint angles on video |
-| Score Timeline | Medium | Graph of metrics over time |
-| Comparison View | Low | Side-by-side with reference athlete |
+| Task | Status | Description |
+|------|--------|-------------|
+| Keypoint Overlay | ✅ | Draw skeleton on video frames |
+| Angle Indicators | 📋 | Show joint angles on video |
+| Score Timeline | 📋 | Graph of metrics over time |
+| Comparison View | 📋 | Side-by-side with reference athlete |
 
 ### Phase 7: Single Athlete Detection 📋
 **Goal**: Fix detection for single-athlete videos
@@ -296,14 +287,13 @@ docker compose up -d
 ## 📝 Recent Updates
 
 ### 2025-11-29 (Latest)
-- **Production Release**: Docker/Coolify deployment ready
-- **GitHub Release**: Clean repository at github.com/airano-ir
-- **Gitea Development Branch**: For future phase planning
-- **Documentation**: Comprehensive bilingual README
-- **Examples**: Sample scripts and data downloader
-- **CI/CD**: GitHub Actions for testing and Docker builds
+- **Phase 5 Complete**: Web interface with full analysis functionality
+- **Export Formats**: TXT, HTML (for PDF), JSON
+- **Bilingual UI**: Full Persian/English support in web app
+- **Charts**: Plotly gauge, radar, and bar charts
+- **Phase 6 Started**: Skeleton overlay visualization
 
-### 2025-11-29 (Earlier)
+### 2025-11-29 (Production Release)
 - **Camera-Independent Features**: Removed 6 invalid efficiency features
 - **New Categories**: 5 technique-focused categories
 - **Limitation Note**: Added note about camera motion in reports
@@ -318,18 +308,15 @@ docker compose up -d
 
 ## 🔧 Development Notes
 
-### Next Session TODO (Phase 5)
-1. Create new Streamlit app for user-facing analysis
-2. Integrate FeedbackGenerator with web interface
-3. Add file upload functionality
-4. Design score visualization charts
-5. Consider redesigning review_interface or creating separate app
+### Next Session TODO (Phase 6)
+1. Add angle indicators on video overlay
+2. Add score timeline graph
+3. Consider comparison view feature
 
-### Key Files for Phase 5
-- `speed_climbing/analysis/feedback/feedback_generator.py` - Main feedback logic
-- `speed_climbing/analysis/feedback/fuzzy_engine.py` - Fuzzy logic engine
-- `examples/analyze_single_video.py` - CLI example (reference for web)
-- `scripts/review_interface/app.py` - Existing Streamlit app (needs redesign)
+### Key Files for Phase 6
+- `scripts/analysis_app/app.py` - Main web interface with skeleton overlay
+- `speed_climbing/vision/pose.py` - BlazePoseExtractor with draw_landmarks()
+- `speed_climbing/analysis/features/posture.py` - Angle calculations
 
 ### Dependencies
 - `streamlit` - Web interface

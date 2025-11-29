@@ -84,6 +84,18 @@ TRANSLATIONS = {
         'about': 'About',
         'about_text': 'This tool analyzes speed climbing technique using AI-powered pose estimation and fuzzy logic.',
         'github_link': 'View on GitHub',
+        'visualization_section': '🎬 Skeleton Visualization',
+        'generate_visualization': 'Generate Skeleton Video',
+        'generating_visualization': 'Generating skeleton overlay...',
+        'download_video': 'Download Visualized Video',
+        'preview_frame': 'Preview Frame',
+        'skeleton_options': 'Skeleton Options',
+        'show_connections': 'Show Connections',
+        'show_keypoints': 'Show Keypoints',
+        'keypoint_color': 'Keypoint Color',
+        'connection_color': 'Connection Color',
+        'visualization_complete': 'Visualization complete!',
+        'select_frame': 'Select Frame',
     },
     'fa': {
         'page_title': 'تحلیل سنگنوردی سرعتی',
@@ -125,6 +137,18 @@ TRANSLATIONS = {
         'about': 'درباره',
         'about_text': 'این ابزار تکنیک سنگنوردی سرعتی را با استفاده از تخمین پوز هوشمند و منطق فازی تحلیل می‌کند.',
         'github_link': 'مشاهده در GitHub',
+        'visualization_section': '🎬 نمایش اسکلت',
+        'generate_visualization': 'تولید ویدئوی اسکلت',
+        'generating_visualization': 'در حال تولید اسکلت...',
+        'download_video': 'دانلود ویدئوی پردازش شده',
+        'preview_frame': 'پیش‌نمایش فریم',
+        'skeleton_options': 'تنظیمات اسکلت',
+        'show_connections': 'نمایش اتصالات',
+        'show_keypoints': 'نمایش نقاط کلیدی',
+        'keypoint_color': 'رنگ نقاط',
+        'connection_color': 'رنگ اتصالات',
+        'visualization_complete': 'تولید تصویر کامل شد!',
+        'select_frame': 'انتخاب فریم',
     }
 }
 
@@ -598,6 +622,244 @@ def create_category_radar(category_scores: Dict[str, float], lang: str) -> go.Fi
     return fig
 
 
+def draw_skeleton_on_frame(
+    frame: 'np.ndarray',
+    keypoints: Dict,
+    show_connections: bool = True,
+    show_keypoints: bool = True,
+    connection_color: tuple = (0, 255, 0),
+    keypoint_color: tuple = (0, 255, 255)
+) -> 'np.ndarray':
+    """
+    Draw skeleton overlay on a single frame.
+
+    Args:
+        frame: Input BGR frame
+        keypoints: Dictionary of keypoint data
+        show_connections: Whether to draw limb connections
+        show_keypoints: Whether to draw keypoint circles
+        connection_color: BGR color for connections
+        keypoint_color: BGR color for keypoints
+
+    Returns:
+        Annotated frame
+    """
+    import cv2
+    import numpy as np
+
+    annotated = frame.copy()
+    height, width = frame.shape[:2]
+
+    # Define pose connections (MediaPipe BlazePose)
+    POSE_CONNECTIONS = [
+        ('left_shoulder', 'right_shoulder'),
+        ('left_shoulder', 'left_elbow'),
+        ('left_elbow', 'left_wrist'),
+        ('right_shoulder', 'right_elbow'),
+        ('right_elbow', 'right_wrist'),
+        ('left_shoulder', 'left_hip'),
+        ('right_shoulder', 'right_hip'),
+        ('left_hip', 'right_hip'),
+        ('left_hip', 'left_knee'),
+        ('left_knee', 'left_ankle'),
+        ('right_hip', 'right_knee'),
+        ('right_knee', 'right_ankle'),
+        ('nose', 'left_shoulder'),
+        ('nose', 'right_shoulder'),
+        ('left_wrist', 'left_index'),
+        ('right_wrist', 'right_index'),
+        ('left_ankle', 'left_heel'),
+        ('right_ankle', 'right_heel'),
+        ('left_heel', 'left_foot_index'),
+        ('right_heel', 'right_foot_index'),
+    ]
+
+    def get_pixel_coords(kp_name):
+        """Get pixel coordinates for a keypoint."""
+        kp = keypoints.get(kp_name)
+        if kp is None:
+            return None
+        x = kp.get('x', 0)
+        y = kp.get('y', 0)
+        return (int(x * width), int(y * height))
+
+    # Draw connections
+    if show_connections:
+        for start_name, end_name in POSE_CONNECTIONS:
+            start_pos = get_pixel_coords(start_name)
+            end_pos = get_pixel_coords(end_name)
+            if start_pos and end_pos:
+                cv2.line(annotated, start_pos, end_pos, connection_color, 2)
+
+    # Draw keypoints
+    if show_keypoints:
+        for name, kp in keypoints.items():
+            if name == 'COM':
+                # Draw COM as a larger red circle
+                pos = get_pixel_coords(name)
+                if pos:
+                    cv2.circle(annotated, pos, 8, (0, 0, 255), -1)
+            else:
+                pos = get_pixel_coords(name)
+                if pos:
+                    confidence = kp.get('visibility', kp.get('confidence', 1.0))
+                    # Adjust color based on confidence
+                    color_intensity = int(confidence * 255)
+                    adjusted_color = (
+                        int(keypoint_color[0] * confidence),
+                        int(keypoint_color[1] * confidence),
+                        int(keypoint_color[2] * confidence)
+                    )
+                    cv2.circle(annotated, pos, 4, adjusted_color, -1)
+
+    return annotated
+
+
+def generate_skeleton_video(
+    video_path: str,
+    output_path: str,
+    show_connections: bool = True,
+    show_keypoints: bool = True,
+    progress_callback=None
+) -> bool:
+    """
+    Generate a video with skeleton overlay.
+
+    Args:
+        video_path: Path to input video
+        output_path: Path for output video
+        show_connections: Whether to draw limb connections
+        show_keypoints: Whether to draw keypoint circles
+        progress_callback: Optional callback(current, total) for progress
+
+    Returns:
+        True if successful, False otherwise
+    """
+    import cv2
+    from speed_climbing.vision.pose import BlazePoseExtractor
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return False
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Create video writer
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    extractor = BlazePoseExtractor()
+
+    frame_id = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        timestamp = frame_id / fps if fps > 0 else 0
+        pose_result = extractor.process_frame(frame, frame_id, timestamp)
+
+        if pose_result.has_detection:
+            # Convert pose result to keypoints dict
+            keypoints_dict = {name: kp.to_dict() for name, kp in pose_result.keypoints.items()}
+            annotated_frame = draw_skeleton_on_frame(
+                frame,
+                keypoints_dict,
+                show_connections=show_connections,
+                show_keypoints=show_keypoints
+            )
+        else:
+            annotated_frame = frame
+
+        out.write(annotated_frame)
+        frame_id += 1
+
+        if progress_callback:
+            progress_callback(frame_id, total_frames)
+
+    cap.release()
+    out.release()
+    extractor.release()
+
+    return True
+
+
+def generate_skeleton_frames(
+    video_path: str,
+    max_frames: int = 10,
+    show_connections: bool = True,
+    show_keypoints: bool = True,
+    progress_callback=None
+) -> list:
+    """
+    Generate sample frames with skeleton overlay.
+
+    Args:
+        video_path: Path to input video
+        max_frames: Maximum number of frames to generate
+        show_connections: Whether to draw limb connections
+        show_keypoints: Whether to draw keypoint circles
+        progress_callback: Optional callback(current, total) for progress
+
+    Returns:
+        List of (frame_id, annotated_frame) tuples
+    """
+    import cv2
+    from speed_climbing.vision.pose import BlazePoseExtractor
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return []
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    # Calculate which frames to sample
+    if total_frames <= max_frames:
+        sample_frames = list(range(total_frames))
+    else:
+        step = total_frames // max_frames
+        sample_frames = [i * step for i in range(max_frames)]
+
+    extractor = BlazePoseExtractor()
+    results = []
+
+    for i, target_frame in enumerate(sample_frames):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+
+        timestamp = target_frame / fps if fps > 0 else 0
+        pose_result = extractor.process_frame(frame, target_frame, timestamp)
+
+        if pose_result.has_detection:
+            keypoints_dict = {name: kp.to_dict() for name, kp in pose_result.keypoints.items()}
+            annotated_frame = draw_skeleton_on_frame(
+                frame,
+                keypoints_dict,
+                show_connections=show_connections,
+                show_keypoints=show_keypoints
+            )
+        else:
+            annotated_frame = frame
+
+        # Convert BGR to RGB for display
+        annotated_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+        results.append((target_frame, annotated_rgb))
+
+        if progress_callback:
+            progress_callback(i + 1, len(sample_frames))
+
+    cap.release()
+    extractor.release()
+
+    return results
+
+
 def create_category_bars(category_details: Dict, lang: str) -> go.Figure:
     """Create a horizontal bar chart for categories."""
     category_names = {
@@ -847,6 +1109,135 @@ if st.session_state['analysis_result']:
 
 
 # =============================================================================
+# VISUALIZATION SECTION
+# =============================================================================
+
+st.markdown("---")
+st.subheader(get_text('visualization_section', lang))
+
+# Store video for visualization
+if 'visualization_frames' not in st.session_state:
+    st.session_state['visualization_frames'] = None
+if 'current_video_path' not in st.session_state:
+    st.session_state['current_video_path'] = None
+
+# Visualization options
+col1, col2 = st.columns(2)
+with col1:
+    show_connections = st.checkbox(
+        get_text('show_connections', lang),
+        value=True,
+        key='show_connections'
+    )
+with col2:
+    show_keypoints = st.checkbox(
+        get_text('show_keypoints', lang),
+        value=True,
+        key='show_keypoints'
+    )
+
+# Generate visualization if video was uploaded
+if uploaded_video:
+    if st.button(get_text('generate_visualization', lang), type="secondary", use_container_width=True):
+        try:
+            # Save video to temp file if not already done
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
+                uploaded_video.seek(0)  # Reset file pointer
+                tmp.write(uploaded_video.read())
+                tmp_path = tmp.name
+
+            st.session_state['current_video_path'] = tmp_path
+
+            # Create progress bar
+            progress_bar = st.progress(0, text=get_text('generating_visualization', lang))
+
+            def update_progress(current, total):
+                if total > 0:
+                    progress_bar.progress(current / total)
+
+            # Generate sample frames (faster than full video)
+            frames = generate_skeleton_frames(
+                tmp_path,
+                max_frames=12,
+                show_connections=show_connections,
+                show_keypoints=show_keypoints,
+                progress_callback=update_progress
+            )
+
+            st.session_state['visualization_frames'] = frames
+            progress_bar.empty()
+            st.success(get_text('visualization_complete', lang))
+
+        except Exception as e:
+            st.error(f"Visualization error: {e}")
+
+# Display visualization frames
+if st.session_state.get('visualization_frames'):
+    frames = st.session_state['visualization_frames']
+
+    st.markdown(f"### {get_text('preview_frame', lang)}")
+
+    # Frame selector slider
+    frame_idx = st.slider(
+        get_text('select_frame', lang),
+        min_value=0,
+        max_value=len(frames) - 1,
+        value=0,
+        key='frame_slider'
+    )
+
+    # Display selected frame
+    frame_id, frame_rgb = frames[frame_idx]
+    st.image(frame_rgb, caption=f"Frame {frame_id}", use_container_width=True)
+
+    # Option to generate full video
+    if st.session_state.get('current_video_path'):
+        st.markdown("---")
+        if st.button(get_text('download_video', lang), type="primary"):
+            with st.spinner(get_text('generating_visualization', lang)):
+                try:
+                    output_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+
+                    progress_bar = st.progress(0)
+
+                    def update_video_progress(current, total):
+                        if total > 0:
+                            progress_bar.progress(current / total)
+
+                    success = generate_skeleton_video(
+                        st.session_state['current_video_path'],
+                        output_path,
+                        show_connections=show_connections,
+                        show_keypoints=show_keypoints,
+                        progress_callback=update_video_progress
+                    )
+
+                    progress_bar.empty()
+
+                    if success:
+                        with open(output_path, 'rb') as f:
+                            video_bytes = f.read()
+
+                        st.download_button(
+                            label="📥 " + get_text('download_video', lang),
+                            data=video_bytes,
+                            file_name="skeleton_overlay_video.mp4",
+                            mime="video/mp4",
+                            use_container_width=True
+                        )
+                        st.success(get_text('visualization_complete', lang))
+                    else:
+                        st.error("Failed to generate video")
+
+                except Exception as e:
+                    st.error(f"Video generation error: {e}")
+
+elif not uploaded_video:
+    st.info(get_text('no_file', lang).replace('analyze', 'visualize') if lang == 'en'
+            else "لطفاً یک ویدئو برای نمایش اسکلت آپلود کنید")
+
+
+# =============================================================================
 # FOOTER
 # =============================================================================
 
@@ -854,8 +1245,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Speed Climbing Performance Analysis v1.0 (Phase 5)<br>
-    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۰
+    Speed Climbing Performance Analysis v1.1 (Phase 6)<br>
+    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۱
     </div>
     """,
     unsafe_allow_html=True
