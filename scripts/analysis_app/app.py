@@ -253,8 +253,23 @@ def load_pose_data(file_content: str) -> Optional[Dict]:
     """Load pose data from JSON content."""
     try:
         data = json.loads(file_content)
+
+        # Validate that this is a pose file, not a feedback/output file
+        if 'frames' not in data:
+            st.error("Invalid file format: This doesn't appear to be a pose file. "
+                     "Pose files must contain 'frames' with keypoint data.")
+            if 'performance_scores' in data or 'overall_score' in data:
+                st.info("This looks like an analysis output file, not a pose input file. "
+                        "Please upload the original pose JSON file (from data/processed/poses/).")
+            return None
+
+        if 'metadata' not in data:
+            st.warning("Pose file is missing metadata. Using defaults.")
+            data['metadata'] = {'fps': 30.0, 'detection_rate_left': 1.0, 'detection_rate_right': 1.0}
+
         return data
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        st.error(f"Invalid JSON file: {e}")
         return None
 
 
@@ -356,7 +371,9 @@ def extract_features_from_poses(pose_data: Dict, lane: str) -> Optional[Dict[str
         st.error("No valid lane data found in the pose file.")
         return None
     except Exception as e:
+        import traceback
         st.error(f"Feature extraction error: {e}")
+        st.code(traceback.format_exc())
         return None
 
 
@@ -368,7 +385,9 @@ def run_analysis(features: Dict[str, float], language: str) -> Optional[Feedback
         feedback = generator.generate(features)
         return feedback
     except Exception as e:
+        import traceback
         st.error(f"Analysis error: {e}")
+        st.code(traceback.format_exc())
         return None
 
 
