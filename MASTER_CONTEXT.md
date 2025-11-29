@@ -108,8 +108,6 @@ docker compose up -d
 | Lane Selection | Medium | Let user choose which lane |
 | Better Lane Assignment | Medium | Improve left/right detection |
 
-**After Phase 7**: Create Google Colab notebook for easy access
-
 ### Phase 8: Label Collection 📋
 **Goal**: Collect labels for ML training
 
@@ -129,6 +127,7 @@ docker compose up -d
 | Skill Classification | Medium | Classify beginner/intermediate/advanced |
 | Technique Clustering | Medium | Find similar climbing styles |
 | Anomaly Detection | Low | Detect unusual movements |
+| **Google Colab Notebook** | High | Create notebook for easy model training and inference |
 
 ### Phase 10: Advanced Position Tracking 📋
 **Goal**: Solve camera-motion problem for absolute positioning

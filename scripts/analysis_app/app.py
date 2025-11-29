@@ -262,8 +262,22 @@ def extract_features_from_poses(pose_data: Dict, lane: str) -> Optional[Dict[str
     """Extract features from pose data."""
     try:
         extractor = FeatureExtractor()
-        features = extractor.extract(pose_data, lane=lane)
-        return features
+        # extract_from_data returns a list of FeatureResult (one per lane)
+        results = extractor.extract_from_data(pose_data)
+
+        # Find the result for the requested lane
+        for result in results:
+            if result.lane == lane:
+                # Convert to flat dict for FeedbackGenerator
+                return result.to_flat_dict()
+
+        # If requested lane not found, try the other lane or first available
+        if results:
+            st.warning(f"Lane '{lane}' not found. Using '{results[0].lane}' instead.")
+            return results[0].to_flat_dict()
+
+        st.error("No valid lane data found in the pose file.")
+        return None
     except Exception as e:
         st.error(f"Feature extraction error: {e}")
         return None
