@@ -1,17 +1,33 @@
 # =============================================================================
-# Speed Climbing Performance Analysis - Git Ignore
+# Docker Ignore File
+# Excludes files from Docker build context for smaller, faster builds
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Development / IDE
+# Git
 # -----------------------------------------------------------------------------
-/don't read
-/.claude
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+.git/
+.gitignore
+.gitattributes
+
+# -----------------------------------------------------------------------------
+# Data Files (Large - download separately)
+# -----------------------------------------------------------------------------
+data/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# -----------------------------------------------------------------------------
+# Development Files
+# -----------------------------------------------------------------------------
+docs/
+notebooks/
+tests/
+*.md
+!README.md
 
 # -----------------------------------------------------------------------------
 # Python
@@ -37,57 +53,21 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
 
 # Virtual environments
 venv/
-env/
 ENV/
+env/
 .venv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
 
 # Jupyter
 .ipynb_checkpoints/
-
-# -----------------------------------------------------------------------------
-# Large Data Files (Download Separately)
-# -----------------------------------------------------------------------------
-
-# All video files
-*.mp4
-*.avi
-*.mov
-*.mkv
-*.webm
-
-# Data directories
-data/raw_videos/
-data/race_segments/
-data/processed/
-data/calibration/
-data/ml_dataset/
-
-# Model files
-*.pth
-*.pt
-*.h5
-*.pkl
-*.ckpt
-
-# -----------------------------------------------------------------------------
-# Exceptions - Keep These Files
-# -----------------------------------------------------------------------------
-
-# Keep sample data for examples
-!examples/sample_output/*.json
-!data/.gitkeep
-
-# Keep config files
-!configs/*.json
-!configs/*.yaml
 
 # -----------------------------------------------------------------------------
 # Environment & Secrets
@@ -104,42 +84,47 @@ credentials/
 # -----------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
-Desktop.ini
-*.lnk
+*.swp
+*.swo
+*~
 
 # -----------------------------------------------------------------------------
-# Logs & Temporary
+# Logs
 # -----------------------------------------------------------------------------
 *.log
 logs/
-*.tmp
-*.temp
-.cache/
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
 tmp/
 temp/
+*.tmp
+*.temp
 
 # -----------------------------------------------------------------------------
-# Documentation Builds
+# IDE & Editor
 # -----------------------------------------------------------------------------
-docs/_build/
-docs/.doctrees/
-site/
+*.sublime-workspace
+*.sublime-project
 
 # -----------------------------------------------------------------------------
-# Testing
+# Docker
 # -----------------------------------------------------------------------------
-.tox/
-.nox/
-coverage.xml
-*.cover
-.hypothesis/
+Dockerfile*
+docker-compose*.yml
+.docker/
 
 # -----------------------------------------------------------------------------
-# Development Files (Remove from Release)
+# CI/CD
 # -----------------------------------------------------------------------------
-docs/PROMPT_*.md
-docs/PHASE_*.md
-docs/SESSION_*.md
-notebooks/
-prompt.md
-MASTER_CONTEXT.md
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.bak
+*.backup

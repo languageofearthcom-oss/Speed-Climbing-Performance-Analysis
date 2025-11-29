@@ -1,307 +1,412 @@
-# Speed Climbing Performance Analysis System 🧗‍♀️
+# Speed Climbing Performance Analysis
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![OpenCV](https://img.shields.io/badge/OpenCV-4.8-green)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10-orange)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-سیستم هوشمند تحلیل خودکار ویدئوی سنگنوردی سرعتی با استفاده از Computer Vision و Machine Learning.
+**English** | [فارسی](#فارسی)
 
-## 🎯 ویژگی‌های کلیدی
+AI-powered speed climbing performance analysis using computer vision and machine learning. Analyzes athlete technique from video footage and provides personalized coaching feedback.
 
-- **Pose Estimation**: استخراج 33 keypoint بدن با MediaPipe BlazePose (بدون مارکر فیزیکی)
-- **Biomechanics Analysis**: محاسبه COM trajectory، path entropy، step length، movement frequency
-- **NARX Neural Networks**: یادگیری الگوهای بهینه حرکت
-- **Fuzzy Logic System**: بازخورد شخصی‌سازی شده و توصیه‌های بهبود
-- **Real-time Processing**: پردازش 30+ fps
-- **Gender-specific Analysis**: تحلیل اختصاصی برای مردان و زنان
+---
 
-## 📋 فهرست مطالب
+## Features
 
-- [نصب](#نصب)
-- [شروع سریع](#شروع-سریع)
-- [معماری سیستم](#معماری-سیستم)
-- [استفاده](#استفاده)
-- [Google Colab](#google-colab)
-- [مستندات](#مستندات)
-- [مشارکت](#مشارکت)
+- **Pose Estimation**: Extract 33 body keypoints using MediaPipe BlazePose (no physical markers needed)
+- **Biomechanics Analysis**: Calculate joint angles, body position, coordination metrics
+- **Fuzzy Logic Feedback**: Personalized coaching recommendations in English and Persian
+- **Camera-Agnostic**: Works with moving cameras (no fixed camera calibration required)
+- **Web Interface**: Streamlit-based review dashboard
+- **Docker Ready**: Easy deployment with Docker and Coolify
 
-## 🚀 نصب
+## Quick Start
 
-### پیش‌نیازها
-
-- Python 3.8 یا بالاتر
-- GPU (اختیاری، برای سرعت بیشتر)
-- حداقل 8GB RAM
-
-### نصب Dependencies
+### Option 1: Docker (Recommended)
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/speed-climbing-analysis.git
-cd speed-climbing-analysis
+git clone https://github.com/airano-ir/speed-climbing-performance-analysis.git
+cd speed-climbing-performance-analysis
+
+# Run with Docker Compose
+docker compose up -d
+
+# Access web interface at http://localhost:8501
+```
+
+### Option 2: Local Installation
+
+```bash
+# Clone repository
+git clone https://github.com/airano-ir/speed-climbing-performance-analysis.git
+cd speed-climbing-performance-analysis
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install requirements
+# Install dependencies
 pip install -r requirements.txt
+
+# Run web interface
+streamlit run scripts/review_interface/app.py
 ```
 
-### بررسی نصب
+### Download Sample Data (Optional)
 
 ```bash
-# Test OpenCV
-python -c "import cv2; print(f'OpenCV: {cv2.__version__}')"
+# Download sample pose data and feedback examples
+python scripts/download_sample_data.py
 
-# Test MediaPipe
-python -c "import mediapipe as mp; print('MediaPipe: OK')"
+# Include sample video (larger download)
+python scripts/download_sample_data.py --include-video
 
-# Test GPU (PyTorch)
-python -c "import torch; print(f'GPU Available: {torch.cuda.is_available()}')"
+# Or create offline samples without downloading
+python scripts/download_sample_data.py --offline
 ```
 
-## ⚡ شروع سریع
+## Usage
 
-### 1. استخراج Keypoints از ویدئو
+### Analyze a Video
 
 ```python
-from src.phase1_pose_estimation.blazepose_extractor import extract_keypoints_from_video
+from speed_climbing.vision.pose import BlazePoseExtractor
+from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator
 
-# Process video
-results = extract_keypoints_from_video(
-    video_path="athlete_001.mp4",
-    output_path="keypoints.json",
-    visualize=True,
-    output_video_path="annotated_output.mp4"
+# Extract poses from video
+extractor = BlazePoseExtractor()
+pose_data = extractor.process_video("race_video.mp4")
+
+# Generate feedback
+generator = FeedbackGenerator(language="en")  # or "fa" for Persian
+report = generator.generate_feedback(
+    pose_data=pose_data,
+    lane="left",
+    include_comparison=True
 )
 
-print(f"Processed {len(results)} frames")
+print(report)
 ```
 
-### 2. محاسبه Path Entropy
-
-```python
-from src.phase2_features.path_entropy import calculate_path_entropy
-import numpy as np
-
-# Load COM trajectory (from previous step)
-com_trajectory = np.array([[x1, y1], [x2, y2], ...])  # in meters
-
-# Calculate entropy
-result = calculate_path_entropy(com_trajectory)
-
-print(f"Entropy: {result['entropy']:.3f}")
-print(f"Efficiency: {result['path_efficiency']:.3f}")
-print(f"Recommendation: {'Excellent' if result['entropy'] < 0.12 else 'Needs improvement'}")
-```
-
-### 3. استفاده از Jupyter Notebook
+### Command Line
 
 ```bash
-# Start Jupyter
-jupyter notebook notebooks/01_phase1_pose_estimation.ipynb
+# Analyze video and get feedback
+python examples/analyze_single_video.py path/to/video.mp4 --language fa --lane left
+
+# Save output to file
+python examples/analyze_single_video.py video.mp4 -o report.txt
 ```
 
-## 🏗️ معماری سیستم
+## Project Structure
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    VIDEO INPUT (60-240 fps)              │
-└────────────────────┬────────────────────────────────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   Phase 1: Pose       │  MediaPipe BlazePose
-         │   Estimation          │  33 keypoints + COM
-         └───────────┬───────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   Phase 2: Feature    │  Path Entropy
-         │   Extraction          │  Gait Analysis
-         │                       │  Kinematics
-         └───────────┬───────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   Phase 3: NARX       │  Time-series
-         │   Neural Network      │  Prediction
-         └───────────┬───────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   Phase 4: Fuzzy      │  Performance
-         │   Logic System        │  Evaluation
-         └───────────┬───────────┘
-                     │
-         ┌───────────▼───────────┐
-         │   Phase 5:            │  Dashboard
-         │   Visualization       │  Reports
-         └───────────────────────┘
+speed_climbing_performance_analysis/
+├── speed_climbing/              # Main package
+│   ├── vision/                  # Computer vision modules
+│   │   ├── pose.py              # BlazePose extraction
+│   │   ├── lanes.py             # Lane detection
+│   │   ├── holds.py             # Hold detection
+│   │   └── calibration.py       # Camera utilities
+│   ├── analysis/                # Analysis modules
+│   │   ├── features/            # Feature extraction
+│   │   │   ├── extractor.py     # Main feature extractor
+│   │   │   ├── posture.py       # Posture analysis
+│   │   │   ├── efficiency.py    # Movement efficiency
+│   │   │   └── frequency.py     # Movement frequency
+│   │   └── feedback/            # Feedback generation
+│   │       ├── feedback_generator.py  # Main generator
+│   │       ├── fuzzy_engine.py  # Fuzzy logic engine
+│   │       └── baseline.py      # Professional baselines
+│   ├── processing/              # Data processing
+│   │   ├── athlete_centric.py   # Coordinate normalization
+│   │   └── dropout.py           # Handle missing data
+│   └── core/                    # Core utilities
+│       └── settings.py          # Configuration
+├── scripts/
+│   ├── review_interface/        # Streamlit web app
+│   └── download_sample_data.py  # Sample data downloader
+├── examples/                    # Example scripts
+├── data/                        # Data directory (videos not included)
+├── tests/                       # Test suite
+├── Dockerfile                   # Docker configuration
+├── docker-compose.yml           # Docker Compose for Coolify
+└── requirements.txt             # Python dependencies
 ```
 
-## 📂 ساختار پروژه
+## Deployment with Coolify
 
-```
-speed_climbing_analysis/
-├── data/
-│   ├── raw_videos/                 # ویدئوهای خام
-│   ├── processed/                  # خروجی‌ها
-│   └── annotations/                # برچسب‌های دستی
-├── src/
-│   ├── phase1_pose_estimation/     # فاز 1
-│   │   ├── video_processor.py      # OpenCV wrapper
-│   │   ├── blazepose_extractor.py  # MediaPipe wrapper
-│   │   └── calibration.py          # Camera calibration
-│   ├── phase2_features/            # فاز 2
-│   │   ├── path_entropy.py         # محاسبه entropy
-│   │   ├── gait_analysis.py        # تحلیل گام
-│   │   └── com_tracker.py          # COM tracking
-│   ├── models/                     # فاز 3
-│   │   ├── narx_network.py         # PyTorch NARX
-│   │   └── train.py                # Training loop
-│   ├── fuzzy_logic/                # فاز 4
-│   │   ├── rules.py                # Fuzzy rules
-│   │   └── feedback_generator.py  # Feedback system
-│   └── visualization/              # فاز 5
-│       ├── overlay.py              # Video overlay
-│       └── dashboard.py            # Dashboard
-├── configs/
-│   ├── keypoints.json              # Keypoint definitions
-│   └── camera_calibration.json     # Calibration data
-├── notebooks/
-│   └── 01_phase1_pose_estimation.ipynb
-├── tests/
-│   └── ...
-├── requirements.txt
-├── README.md
-└── prompt.md                       # معماری کامل
-```
+This project is configured for easy deployment with [Coolify](https://coolify.io/):
 
-## 🎓 استفاده
+1. Connect your repository in Coolify
+2. Select "Docker Compose" as build type
+3. Coolify will automatically detect `docker-compose.yml`
+4. Deploy! The web interface will be available on port 8501
 
-### Command Line Interface
+See [docker-compose.yml](docker-compose.yml) for configuration details.
 
-```bash
-# Extract keypoints
-python -m src.phase1_pose_estimation.blazepose_extractor video.mp4
-
-# Calculate path entropy (after keypoint extraction)
-python -m src.phase2_features.path_entropy keypoints.json
-```
-
-### Python API
-
-```python
-# Video Processing
-from src.phase1_pose_estimation import VideoProcessor, BlazePoseExtractor
-
-with VideoProcessor("video.mp4", target_fps=30) as video:
-    with BlazePoseExtractor(model_complexity=1) as extractor:
-        for frame_data in video.extract_frames():
-            result = extractor.process_frame(
-                frame_data['frame'],
-                frame_data['frame_id'],
-                frame_data['timestamp']
-            )
-            # Process result...
-```
-
-## 🌐 Google Colab
-
-برای استفاده بدون نصب local:
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yourusername/speed-climbing-analysis/blob/main/notebooks/01_phase1_pose_estimation.ipynb)
-
-### گام‌های Colab:
-
-1. باز کردن notebook
-2. آپلود ویدئو به Google Drive
-3. اجرای سلول‌ها به ترتیب
-4. دانلود نتایج
-
-## 📊 مثال نتایج
-
-### Input: ویدئوی سنگنوردی سرعتی (15m، 6.5 ثانیه)
-
-**خروجی:**
+## Sample Output
 
 ```json
 {
-  "total_time": 6.53,
-  "path_entropy": 0.14,
-  "avg_step_length": 0.89,
-  "vertical_efficiency": 0.87,
-  "technique_rating": "good",
+  "performance_scores": {
+    "coordination": {"score": 72.5, "rating": "good"},
+    "leg_technique": {"score": 68.0, "rating": "average"},
+    "arm_technique": {"score": 75.0, "rating": "good"},
+    "body_position": {"score": 70.0, "rating": "good"},
+    "reach": {"score": 65.0, "rating": "average"}
+  },
+  "overall_score": 70.1,
   "recommendations": [
-    "کاهش حرکات جانبی در بخش میانی",
-    "افزایش استفاده از dynamic movements"
+    {
+      "priority": "high",
+      "category": "leg_technique",
+      "recommendation_en": "Practice maintaining consistent knee angles during push-off phases",
+      "recommendation_fa": "تمرین حفظ زوایای ثابت زانو در فازهای هل دادن"
+    }
   ]
 }
 ```
 
-### Visualization
+## API Reference
 
-- ✅ Skeleton overlay روی ویدئو
-- ✅ COM trajectory plot
-- ✅ Velocity profile
-- ✅ Joint angle time-series
-- ✅ Entropy heatmap
+### BlazePoseExtractor
 
-## 📖 مستندات
+```python
+from speed_climbing.vision.pose import BlazePoseExtractor
 
-### کامل:
+extractor = BlazePoseExtractor(
+    model_complexity=1,      # 0, 1, or 2 (higher = more accurate)
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
 
-- [معماری سیستم](prompt.md) - راهنمای کامل فنی
-- [API Reference](docs/api.md) - مستندات API
-- [Tutorial](docs/tutorial.md) - آموزش گام به گام
+# Process single frame
+result = extractor.process_frame(frame, frame_id, timestamp)
 
-### مفاهیم کلیدی:
+# Process entire video
+pose_data = extractor.process_video(video_path)
+```
 
-- **Path Entropy (H)**: معیار انحراف از مسیر مستقیم
-  - Optimal: H < 0.12
-  - Acceptable: 0.12-0.18
-  - Poor: > 0.18
+### FeedbackGenerator
 
-- **COM Trajectory**: مسیر مرکز جرم (Center of Mass)
+```python
+from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator
 
-- **Step Length**: طول گام
-  - Women optimal: 0.75-0.95m
-  - Men optimal: 0.85-1.05m
+generator = FeedbackGenerator(
+    language="en"  # "en" or "fa"
+)
 
-- **Movement Frequency**: فرکانس حرکت دست/پا (Hz)
+report = generator.generate_feedback(
+    pose_data=pose_data,
+    lane="left",           # "left" or "right"
+    include_comparison=True
+)
+```
 
-## 🔬 تحقیقات و منابع
+## Contributing
 
-- IFSC Speed Climbing Standards (2024)
-- "Gender-specific biomechanics in speed climbing" (2023)
-- MediaPipe BlazePose: [Paper](https://arxiv.org/abs/2006.10204)
-- NARX Networks: [Tutorial](https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html)
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 🤝 مشارکت
+## License
 
-برای مشارکت:
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit changes: `git commit -m 'Add AmazingFeature'`
-4. Push to branch: `git push origin feature/AmazingFeature`
-5. Open Pull Request
-
-## 📄 License
-
-این پروژه تحت لایسنس MIT منتشر شده است. جزئیات در [LICENSE](LICENSE).
-
-## 🙏 تشکر
+## Acknowledgments
 
 - Google MediaPipe Team
 - IFSC Research Committee
 - OpenCV Contributors
 
-## 📧 تماس
+---
 
-- **نویسندگان**: Speed Climbing Research Team
-- **ایمیل**: research@speedclimbing.ai
-- **وبسایت**: https://speedclimbing.ai
+# فارسی
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.8-green)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10-orange)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+[English](#speed-climbing-performance-analysis) | **فارسی**
+
+سیستم هوشمند تحلیل عملکرد صعود سرعتی با استفاده از بینایی کامپیوتری و یادگیری ماشین. تحلیل تکنیک ورزشکار از ویدئو و ارائه بازخورد شخصی‌سازی شده.
 
 ---
 
-**Made with ❤️ for the climbing community**
+## ویژگی‌ها
+
+- **تشخیص پوز**: استخراج 33 نقطه کلیدی بدن با MediaPipe BlazePose (بدون نیاز به مارکر فیزیکی)
+- **تحلیل بیومکانیک**: محاسبه زوایای مفصل، وضعیت بدن، معیارهای هماهنگی
+- **بازخورد منطق فازی**: توصیه‌های مربیگری شخصی‌سازی شده به فارسی و انگلیسی
+- **مستقل از دوربین**: کار با دوربین‌های متحرک (بدون نیاز به کالیبراسیون دوربین ثابت)
+- **رابط وب**: داشبورد بررسی مبتنی بر Streamlit
+- **آماده Docker**: استقرار آسان با Docker و Coolify
+
+## شروع سریع
+
+### روش 1: Docker (پیشنهادی)
+
+```bash
+# کلون مخزن
+git clone https://github.com/airano-ir/speed-climbing-performance-analysis.git
+cd speed-climbing-performance-analysis
+
+# اجرا با Docker Compose
+docker compose up -d
+
+# دسترسی به رابط وب در http://localhost:8501
+```
+
+### روش 2: نصب محلی
+
+```bash
+# کلون مخزن
+git clone https://github.com/airano-ir/speed-climbing-performance-analysis.git
+cd speed-climbing-performance-analysis
+
+# ایجاد محیط مجازی
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# نصب وابستگی‌ها
+pip install -r requirements.txt
+
+# اجرای رابط وب
+streamlit run scripts/review_interface/app.py
+```
+
+### دانلود داده‌های نمونه (اختیاری)
+
+```bash
+# دانلود داده‌های پوز نمونه و نمونه‌های بازخورد
+python scripts/download_sample_data.py
+
+# شامل ویدئوی نمونه (دانلود بزرگ‌تر)
+python scripts/download_sample_data.py --include-video
+
+# یا ایجاد نمونه‌های آفلاین بدون دانلود
+python scripts/download_sample_data.py --offline
+```
+
+## استفاده
+
+### تحلیل یک ویدئو
+
+```python
+from speed_climbing.vision.pose import BlazePoseExtractor
+from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator
+
+# استخراج پوز از ویدئو
+extractor = BlazePoseExtractor()
+pose_data = extractor.process_video("race_video.mp4")
+
+# تولید بازخورد
+generator = FeedbackGenerator(language="fa")  # یا "en" برای انگلیسی
+report = generator.generate_feedback(
+    pose_data=pose_data,
+    lane="left",
+    include_comparison=True
+)
+
+print(report)
+```
+
+### خط فرمان
+
+```bash
+# تحلیل ویدئو و دریافت بازخورد
+python examples/analyze_single_video.py path/to/video.mp4 --language fa --lane left
+
+# ذخیره خروجی در فایل
+python examples/analyze_single_video.py video.mp4 -o report.txt
+```
+
+## ساختار پروژه
+
+```
+speed_climbing_performance_analysis/
+├── speed_climbing/              # پکیج اصلی
+│   ├── vision/                  # ماژول‌های بینایی کامپیوتری
+│   │   ├── pose.py              # استخراج BlazePose
+│   │   ├── lanes.py             # تشخیص مسیر
+│   │   ├── holds.py             # تشخیص گیره‌ها
+│   │   └── calibration.py       # ابزارهای دوربین
+│   ├── analysis/                # ماژول‌های تحلیل
+│   │   ├── features/            # استخراج ویژگی
+│   │   │   ├── extractor.py     # استخراج‌کننده اصلی
+│   │   │   ├── posture.py       # تحلیل وضعیت بدن
+│   │   │   ├── efficiency.py    # کارایی حرکت
+│   │   │   └── frequency.py     # فرکانس حرکت
+│   │   └── feedback/            # تولید بازخورد
+│   │       ├── feedback_generator.py  # تولیدکننده اصلی
+│   │       ├── fuzzy_engine.py  # موتور منطق فازی
+│   │       └── baseline.py      # معیارهای حرفه‌ای
+│   ├── processing/              # پردازش داده
+│   │   ├── athlete_centric.py   # نرمال‌سازی مختصات
+│   │   └── dropout.py           # مدیریت داده‌های گمشده
+│   └── core/                    # ابزارهای پایه
+│       └── settings.py          # تنظیمات
+├── scripts/
+│   ├── review_interface/        # برنامه وب Streamlit
+│   └── download_sample_data.py  # دانلودکننده داده نمونه
+├── examples/                    # اسکریپت‌های نمونه
+├── data/                        # پوشه داده (ویدئوها شامل نمی‌شود)
+├── tests/                       # مجموعه تست
+├── Dockerfile                   # پیکربندی Docker
+├── docker-compose.yml           # Docker Compose برای Coolify
+└── requirements.txt             # وابستگی‌های Python
+```
+
+## استقرار با Coolify
+
+این پروژه برای استقرار آسان با [Coolify](https://coolify.io/) پیکربندی شده است:
+
+1. مخزن خود را در Coolify متصل کنید
+2. "Docker Compose" را به عنوان نوع ساخت انتخاب کنید
+3. Coolify به طور خودکار `docker-compose.yml` را تشخیص می‌دهد
+4. استقرار! رابط وب در پورت 8501 در دسترس خواهد بود
+
+برای جزئیات پیکربندی، [docker-compose.yml](docker-compose.yml) را ببینید.
+
+## نمونه خروجی
+
+```json
+{
+  "performance_scores": {
+    "coordination": {"score": 72.5, "rating": "خوب"},
+    "leg_technique": {"score": 68.0, "rating": "متوسط"},
+    "arm_technique": {"score": 75.0, "rating": "خوب"},
+    "body_position": {"score": 70.0, "rating": "خوب"},
+    "reach": {"score": 65.0, "rating": "متوسط"}
+  },
+  "overall_score": 70.1,
+  "recommendations": [
+    {
+      "priority": "بالا",
+      "category": "تکنیک پا",
+      "recommendation_fa": "تمرین حفظ زوایای ثابت زانو در فازهای هل دادن"
+    }
+  ]
+}
+```
+
+## مشارکت
+
+از مشارکت شما استقبال می‌کنیم! لطفاً [CONTRIBUTING.md](CONTRIBUTING.md) را برای راهنما ببینید.
+
+## مجوز
+
+این پروژه تحت مجوز MIT منتشر شده است - برای جزئیات [LICENSE](LICENSE) را ببینید.
+
+## قدردانی
+
+- تیم Google MediaPipe
+- کمیته تحقیقات IFSC
+- مشارکت‌کنندگان OpenCV
+
+---
+
+**Made with care for the climbing community / ساخته شده با عشق برای جامعه کوهنوردی**

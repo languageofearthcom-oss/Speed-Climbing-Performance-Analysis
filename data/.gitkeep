@@ -1,0 +1,5 @@
+# This file keeps the data directory in git
+# Data files should be downloaded using scripts/download_sample_data.py
+#
+# این فایل پوشه data را در git نگه می‌دارد
+# فایل‌های داده باید با استفاده از scripts/download_sample_data.py دانلود شوند
