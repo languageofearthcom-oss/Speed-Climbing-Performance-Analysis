@@ -38,7 +38,10 @@ except ImportError:
 from speed_climbing.analysis.feedback.feedback_generator import FeedbackGenerator, Language, Feedback
 from speed_climbing.analysis.features.extractor import FeatureExtractor
 from speed_climbing.analysis.features.race_detector import RaceSegmentDetector, RaceSegment
-from speed_climbing.vision.athlete_detector import AthleteCountDetector, detect_athlete_count, get_valid_lanes
+from speed_climbing.vision.athlete_detector import (
+    AthleteCountDetector, detect_athlete_count, get_valid_lanes,
+    LaneAssignmentAnalyzer, analyze_lane_assignment, get_best_lane_for_analysis
+)
 
 
 # =============================================================================
@@ -412,15 +415,15 @@ if temp_pose_data:
 
         with col2:
             if auto_select:
-                # Auto-select the recommended lane
-                recommended = detection_result.primary_lane
-                if recommended == 'both':
-                    lane = 'left' if detection_result.left_detection_rate >= detection_result.right_detection_rate else 'right'
-                elif recommended in ['left', 'right']:
-                    lane = recommended
-                else:
-                    lane = 'left'
-                st.markdown(f"**{get_text('recommended_lane', lang)}:** {get_text(f'{lane}_lane', lang)}")
+                # Use improved lane assignment with position analysis
+                best_lane, best_reason = get_best_lane_for_analysis(temp_pose_data)
+                lane = best_lane
+
+                # Show assignment analysis
+                assignment = analyze_lane_assignment(temp_pose_data, lane)
+                pos_text = f"(X: {assignment.average_x_position:.2f})" if assignment.confidence > 0 else ""
+
+                st.markdown(f"**{get_text('recommended_lane', lang)}:** {get_text(f'{lane}_lane', lang)} {pos_text}")
             else:
                 lane = st.radio(
                     get_text('select_lane', lang),
@@ -1955,8 +1958,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Speed Climbing Performance Analysis v1.4 (Phase 7)<br>
-    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۴
+    Speed Climbing Performance Analysis v1.5 (Phase 7 Complete)<br>
+    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۵
     </div>
     """,
     unsafe_allow_html=True

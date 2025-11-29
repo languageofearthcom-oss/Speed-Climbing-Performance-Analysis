@@ -255,3 +255,225 @@ def get_valid_lanes(pose_data: Dict, min_detection_rate: float = 0.25) -> List[s
         valid_lanes.append('right')
 
     return valid_lanes
+
+
+@dataclass
+class LaneAssignmentResult:
+    """Result of lane position analysis."""
+    original_lane: str
+    suggested_lane: str
+    needs_reassignment: bool
+    average_x_position: float  # 0.0 = left edge, 1.0 = right edge
+    confidence: float
+    reason: str
+
+
+class LaneAssignmentAnalyzer:
+    """
+    Analyze keypoint positions to determine correct lane assignment.
+
+    For single-athlete videos, the athlete might be detected in the wrong lane
+    (e.g., left lane when they're actually on the right side of the frame).
+    This class analyzes the actual X positions to suggest reassignment.
+    """
+
+    def __init__(
+        self,
+        left_threshold: float = 0.4,  # X < 0.4 = likely left lane
+        right_threshold: float = 0.6,  # X > 0.6 = likely right lane
+        min_samples: int = 10
+    ):
+        """
+        Args:
+            left_threshold: X position below this is considered left lane
+            right_threshold: X position above this is considered right lane
+            min_samples: Minimum frames needed for reliable analysis
+        """
+        self.left_threshold = left_threshold
+        self.right_threshold = right_threshold
+        self.min_samples = min_samples
+
+    def analyze_lane_assignment(
+        self,
+        pose_data: Dict,
+        current_lane: str
+    ) -> LaneAssignmentResult:
+        """
+        Analyze if the athlete is assigned to the correct lane.
+
+        Args:
+            pose_data: Pose data dictionary
+            current_lane: Currently assigned lane ('left' or 'right')
+
+        Returns:
+            LaneAssignmentResult with suggestion
+        """
+        frames = pose_data.get('frames', [])
+        if not frames:
+            return LaneAssignmentResult(
+                original_lane=current_lane,
+                suggested_lane=current_lane,
+                needs_reassignment=False,
+                average_x_position=0.5,
+                confidence=0.0,
+                reason="No frames available"
+            )
+
+        # Collect X positions of COM (center of mass)
+        x_positions = []
+        climber_key = f'{current_lane}_climber'
+
+        for frame in frames:
+            climber = frame.get(climber_key)
+            if not climber or not climber.get('has_detection'):
+                continue
+
+            keypoints = climber.get('keypoints', {})
+
+            # Use hip midpoint as reference (more stable than COM)
+            left_hip = keypoints.get('left_hip')
+            right_hip = keypoints.get('right_hip')
+
+            if left_hip and right_hip:
+                lh_x = left_hip.get('x', 0)
+                rh_x = right_hip.get('x', 0)
+                lh_conf = left_hip.get('visibility', left_hip.get('confidence', 0))
+                rh_conf = right_hip.get('visibility', right_hip.get('confidence', 0))
+
+                if lh_conf > 0.3 and rh_conf > 0.3:
+                    hip_x = (lh_x + rh_x) / 2
+                    x_positions.append(hip_x)
+
+        if len(x_positions) < self.min_samples:
+            return LaneAssignmentResult(
+                original_lane=current_lane,
+                suggested_lane=current_lane,
+                needs_reassignment=False,
+                average_x_position=0.5,
+                confidence=0.0,
+                reason=f"Not enough samples ({len(x_positions)} < {self.min_samples})"
+            )
+
+        # Calculate average position
+        avg_x = np.mean(x_positions)
+        std_x = np.std(x_positions)
+
+        # Determine suggested lane based on position
+        if avg_x < self.left_threshold:
+            suggested_lane = 'left'
+            position_desc = "left side"
+        elif avg_x > self.right_threshold:
+            suggested_lane = 'right'
+            position_desc = "right side"
+        else:
+            suggested_lane = current_lane
+            position_desc = "center"
+
+        # Calculate confidence based on how far from center
+        distance_from_center = abs(avg_x - 0.5)
+        position_confidence = min(1.0, distance_from_center * 4)  # Max at 0.25 from center
+
+        # Lower confidence if high variance
+        if std_x > 0.1:
+            position_confidence *= 0.7
+
+        needs_reassignment = suggested_lane != current_lane
+
+        if needs_reassignment:
+            reason = f"Athlete is on {position_desc} (avg X={avg_x:.2f}) but assigned to {current_lane} lane"
+        else:
+            reason = f"Athlete correctly assigned to {current_lane} lane (avg X={avg_x:.2f})"
+
+        return LaneAssignmentResult(
+            original_lane=current_lane,
+            suggested_lane=suggested_lane,
+            needs_reassignment=needs_reassignment,
+            average_x_position=avg_x,
+            confidence=position_confidence,
+            reason=reason
+        )
+
+    def get_best_lane(self, pose_data: Dict) -> Tuple[str, float]:
+        """
+        Determine the best lane to use based on detection quality and position.
+
+        Args:
+            pose_data: Pose data dictionary
+
+        Returns:
+            Tuple of (best_lane, confidence)
+        """
+        # First check detection rates
+        detector = AthleteCountDetector()
+        detection_result = detector.detect_from_pose_data(pose_data)
+
+        # If one lane has much better detection, use that
+        left_rate = detection_result.left_detection_rate
+        right_rate = detection_result.right_detection_rate
+
+        if left_rate > right_rate * 2 and left_rate > 0.3:
+            # Left has significantly better detection
+            assignment = self.analyze_lane_assignment(pose_data, 'left')
+            return assignment.suggested_lane, assignment.confidence
+
+        if right_rate > left_rate * 2 and right_rate > 0.3:
+            # Right has significantly better detection
+            assignment = self.analyze_lane_assignment(pose_data, 'right')
+            return assignment.suggested_lane, assignment.confidence
+
+        # Both lanes have similar detection - check position for each
+        left_assignment = self.analyze_lane_assignment(pose_data, 'left')
+        right_assignment = self.analyze_lane_assignment(pose_data, 'right')
+
+        # Pick the one that's correctly positioned
+        if not left_assignment.needs_reassignment:
+            return 'left', left_rate
+        if not right_assignment.needs_reassignment:
+            return 'right', right_rate
+
+        # Both might need reassignment - use the one with better detection
+        if left_rate >= right_rate:
+            return left_assignment.suggested_lane, left_rate
+        else:
+            return right_assignment.suggested_lane, right_rate
+
+
+def analyze_lane_assignment(pose_data: Dict, lane: str) -> LaneAssignmentResult:
+    """
+    Convenience function to analyze lane assignment.
+
+    Args:
+        pose_data: Pose data dictionary
+        lane: Current lane assignment
+
+    Returns:
+        LaneAssignmentResult
+    """
+    analyzer = LaneAssignmentAnalyzer()
+    return analyzer.analyze_lane_assignment(pose_data, lane)
+
+
+def get_best_lane_for_analysis(pose_data: Dict) -> Tuple[str, str]:
+    """
+    Get the best lane to use for analysis.
+
+    Args:
+        pose_data: Pose data dictionary
+
+    Returns:
+        Tuple of (lane, reason)
+    """
+    analyzer = LaneAssignmentAnalyzer()
+    best_lane, confidence = analyzer.get_best_lane(pose_data)
+
+    detector = AthleteCountDetector()
+    detection_result = detector.detect_from_pose_data(pose_data)
+
+    if detection_result.athlete_count == 1:
+        reason = f"Single athlete detected in {best_lane} lane"
+    elif detection_result.athlete_count == 2:
+        reason = f"Two athletes - analyzing {best_lane} lane"
+    else:
+        reason = f"Using {best_lane} lane (best available)"
+
+    return best_lane, reason

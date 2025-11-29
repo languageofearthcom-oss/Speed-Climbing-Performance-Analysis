@@ -3,7 +3,7 @@
 ## Project Overview
 **Goal**: Build an AI-powered system that analyzes speed climbing videos and provides **personalized feedback** to athletes, coaches, and enthusiasts.
 
-**Current Status**: **Phase 6 Complete** → Phase 7 In Progress
+**Current Status**: **Phase 7 Complete** → Ready for Phase 8
 
 ---
 
@@ -91,7 +91,7 @@ docker compose up -d
 | Score Timeline | ✅ | Graph of joint angles over time with race segment highlight |
 | Comparison View | 📋 | Side-by-side with reference athlete |
 
-### Phase 7: Single Athlete Detection 📋 (IN PROGRESS)
+### Phase 7: Single Athlete Detection ✅ (COMPLETE)
 **Goal**: Fix detection for single-athlete videos
 
 | Task | Status | Description |
@@ -99,7 +99,7 @@ docker compose up -d
 | Athlete Count Detection | ✅ | Auto-detect 1 or 2 athletes based on detection rates |
 | Lane Selection | ✅ | Smart lane selection with auto/manual options |
 | Detection Quality Display | ✅ | Show detection rates per lane with icons |
-| Better Lane Assignment | 📋 | Improve left/right detection logic |
+| Better Lane Assignment | ✅ | Position-based lane analysis using hip X coordinates |
 
 ### Phase 8: Label Collection 📋
 **Goal**: Collect labels for ML training
@@ -288,10 +288,11 @@ docker compose up -d
 
 ## 📝 Recent Updates
 
-### 2025-11-29 (Latest - Phase 7 Progress)
+### 2025-11-29 (Latest - Phase 7 Complete)
 - **Athlete Count Detection**: Auto-detect 1 or 2 athletes ✅
 - **Smart Lane Selection**: Auto-select best lane or manual override ✅
 - **Detection Quality Display**: Show detection rates with icons ✅
+- **Position-Based Lane Assignment**: Analyze hip X positions for correct lane ✅
 - **New Module**: `speed_climbing/vision/athlete_detector.py`
 
 ### 2025-11-29 (Phase 6 Complete)
