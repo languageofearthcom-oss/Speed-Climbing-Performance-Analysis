@@ -49,6 +49,7 @@ COPY --from=builder /root/.local/lib/python3.11/site-packages /usr/local/lib/pyt
 COPY --chown=appuser:appgroup speed_climbing/ ./speed_climbing/
 COPY --chown=appuser:appgroup scripts/ ./scripts/
 COPY --chown=appuser:appgroup configs/ ./configs/
+COPY --chown=appuser:appgroup examples/ ./examples/
 COPY --chown=appuser:appgroup quick_start.py ./
 COPY --chown=appuser:appgroup requirements_core.txt ./
 
@@ -73,7 +74,9 @@ ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 # Start Streamlit application
-CMD ["python", "-m", "streamlit", "run", "scripts/review_interface/app.py", \
+# Default: New user-facing analysis app (Phase 5)
+# For review interface: Override with scripts/review_interface/app.py
+CMD ["python", "-m", "streamlit", "run", "scripts/analysis_app/app.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--server.headless=true", \

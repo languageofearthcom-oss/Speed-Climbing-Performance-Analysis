@@ -40,9 +40,19 @@ pytest>=7.4.0
 pytest-cov>=4.1.0
 
 # ========================================
+# Web Interface
+# ========================================
+streamlit>=1.29.0
+plotly>=5.18.0
+
+# ========================================
+# Fuzzy Logic (Phase 4)
+# ========================================
+scikit-fuzzy>=0.4.2
+
+# ========================================
 # Optional (for later phases)
 # ========================================
 # librosa>=0.10.0              # Audio analysis (Phase 1 - race detection)
 # yt-dlp>=2024.8.0             # YouTube downloader (already done)
 # torch>=2.1.0                 # ML models (Phase 3+)
-# plotly>=5.18.0               # Interactive plots (Phase 4+)
