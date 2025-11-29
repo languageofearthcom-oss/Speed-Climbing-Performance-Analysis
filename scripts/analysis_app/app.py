@@ -258,6 +258,83 @@ def load_pose_data(file_content: str) -> Optional[Dict]:
         return None
 
 
+def process_video_to_poses(video_path: str, progress_bar=None) -> Optional[Dict]:
+    """
+    Process video and extract poses frame by frame.
+
+    Returns pose data in the format expected by FeatureExtractor.
+    """
+    import cv2
+    from speed_climbing.vision.pose import BlazePoseExtractor
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    extractor = BlazePoseExtractor()
+    frames = []
+    detection_count = 0
+
+    frame_id = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        timestamp = frame_id / fps if fps > 0 else 0
+        pose_result = extractor.process_frame(frame, frame_id, timestamp)
+
+        # Build frame data in expected format
+        # For single video, we put the athlete in "left" lane
+        frame_data = {
+            'frame_id': frame_id,
+            'timestamp': timestamp,
+            'left_climber': None,
+            'right_climber': None
+        }
+
+        if pose_result.has_detection:
+            detection_count += 1
+            climber_data = {
+                'has_detection': True,
+                'overall_confidence': pose_result.overall_confidence,
+                'keypoints': {name: kp.to_dict() for name, kp in pose_result.keypoints.items()}
+            }
+            # Put in left lane by default (user can select)
+            frame_data['left_climber'] = climber_data
+
+        frames.append(frame_data)
+        frame_id += 1
+
+        # Update progress
+        if progress_bar and total_frames > 0:
+            progress_bar.progress(frame_id / total_frames)
+
+    cap.release()
+    extractor.release()
+
+    detection_rate = detection_count / total_frames if total_frames > 0 else 0
+
+    pose_data = {
+        'metadata': {
+            'fps': fps,
+            'total_frames': total_frames,
+            'width': width,
+            'height': height,
+            'detection_rate_left': detection_rate,
+            'detection_rate_right': 0.0  # No right lane for single video
+        },
+        'frames': frames
+    }
+
+    return pose_data
+
+
 def extract_features_from_poses(pose_data: Dict, lane: str) -> Optional[Dict[str, float]]:
     """Extract features from pose data."""
     try:
@@ -440,34 +517,45 @@ if st.button(get_text('analyze_button', lang), type="primary", use_container_wid
 
     elif uploaded_video:
         # Process video (requires pose extraction)
-        st.warning(get_text('processing_video', lang))
+        st.info(get_text('processing_video', lang))
 
-        with st.spinner(get_text('analyzing', lang)):
-            try:
-                # Save video to temp file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
-                    tmp.write(uploaded_video.read())
-                    tmp_path = tmp.name
+        try:
+            # Save video to temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
+                tmp.write(uploaded_video.read())
+                tmp_path = tmp.name
 
-                # Import pose extractor
-                from speed_climbing.vision.pose import BlazePoseExtractor
+            # Create progress bar
+            progress_bar = st.progress(0, text="Extracting poses...")
 
-                # Extract poses
-                extractor = BlazePoseExtractor()
-                pose_data = extractor.process_video(tmp_path)
+            # Process video frame by frame
+            pose_data = process_video_to_poses(tmp_path, progress_bar)
 
-                # Clean up temp file
-                Path(tmp_path).unlink(missing_ok=True)
+            # Clean up temp file
+            Path(tmp_path).unlink(missing_ok=True)
 
-                if pose_data:
-                    features = extract_features_from_poses(pose_data, lane)
-                    if features:
-                        feedback = run_analysis(features, lang)
-                        if feedback:
-                            st.session_state['analysis_result'] = feedback
+            if pose_data:
+                progress_bar.progress(100, text="Analyzing features...")
 
-            except Exception as e:
-                st.error(f"{get_text('error_processing', lang)}: {e}")
+                # For uploaded videos, always use 'left' lane (single athlete)
+                features = extract_features_from_poses(pose_data, 'left')
+                if features:
+                    feedback = run_analysis(features, lang)
+                    if feedback:
+                        st.session_state['analysis_result'] = feedback
+                        progress_bar.empty()
+                    else:
+                        progress_bar.empty()
+                        st.error("Failed to generate feedback")
+                else:
+                    progress_bar.empty()
+                    st.error("Failed to extract features from poses")
+            else:
+                progress_bar.empty()
+                st.error("Failed to process video")
+
+        except Exception as e:
+            st.error(f"{get_text('error_processing', lang)}: {e}")
 
     else:
         st.warning(get_text('no_file', lang))
