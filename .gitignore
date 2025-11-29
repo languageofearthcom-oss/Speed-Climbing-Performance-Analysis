@@ -142,4 +142,4 @@ docs/PHASE_*.md
 docs/SESSION_*.md
 notebooks/
 prompt.md
-MASTER_CONTEXT.md
+# Note: MASTER_CONTEXT.md is tracked in development branch for internal use
