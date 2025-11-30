@@ -299,6 +299,12 @@ if 'athlete_detection' not in st.session_state:
 if 'auto_lane_select' not in st.session_state:
     st.session_state['auto_lane_select'] = True
 
+# Track upload keys for auto-clear functionality
+if 'video_upload_key' not in st.session_state:
+    st.session_state['video_upload_key'] = 0
+if 'pose_upload_key' not in st.session_state:
+    st.session_state['pose_upload_key'] = 0
+
 
 # =============================================================================
 # SIDEBAR
@@ -355,33 +361,39 @@ st.subheader(get_text('upload_section', lang))
 col1, col2, col3 = st.columns([2, 1, 2])
 
 with col1:
-    # Video upload
+    # Video upload with dynamic key for auto-clear
     uploaded_video = st.file_uploader(
         get_text('upload_video', lang),
         type=['mp4', 'mov', 'avi', 'mkv'],
-        key='video_uploader'
+        key=f'video_uploader_{st.session_state["video_upload_key"]}'
     )
     st.caption(get_text('video_format_tip', lang))
+
+    # Auto-clear pose uploader when video is uploaded
+    if uploaded_video:
+        st.session_state['pose_upload_key'] += 1
 
 with col2:
     st.markdown(f"<div style='text-align: center; padding-top: 30px;'>{get_text('or_text', lang)}</div>",
                 unsafe_allow_html=True)
 
 with col3:
-    # Pose JSON upload
+    # Pose JSON upload with dynamic key for auto-clear
     uploaded_pose = st.file_uploader(
         get_text('upload_pose', lang),
         type=['json'],
-        key='pose_uploader'
+        key=f'pose_uploader_{st.session_state["pose_upload_key"]}'
     )
+
+    # Auto-clear video uploader when pose is uploaded
+    if uploaded_pose:
+        st.session_state['video_upload_key'] += 1
 
 # Show which file will be used for analysis
 if uploaded_pose or uploaded_video:
     st.markdown("")
     if uploaded_pose:
         st.success(f"**{get_text('selected_file', lang)}:** {get_text('using_pose_file', lang)} ({uploaded_pose.name})")
-        if uploaded_video:
-            st.caption(f"⚠️ {'فایل ویدئو نادیده گرفته می‌شود' if lang == 'fa' else 'Video file will be ignored'}")
     elif uploaded_video:
         st.info(f"**{get_text('selected_file', lang)}:** {get_text('using_video', lang)} ({uploaded_video.name})")
 
