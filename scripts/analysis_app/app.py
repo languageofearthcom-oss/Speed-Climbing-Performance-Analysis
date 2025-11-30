@@ -125,6 +125,10 @@ TRANSLATIONS = {
         'by_seconds': 'By Seconds',
         'start_time': 'Start Time (s)',
         'end_time': 'End Time (s)',
+        'selected_file': '📁 Selected for analysis',
+        'using_pose_file': 'Using Pose JSON file',
+        'using_video': 'Using Video file',
+        'clear_selection': 'Clear',
         'activity_chart': 'Activity Chart',
         'frames': 'frames',
         'seconds': 'seconds',
@@ -225,6 +229,10 @@ TRANSLATIONS = {
         'by_seconds': 'بر اساس ثانیه',
         'start_time': 'زمان شروع (ث)',
         'end_time': 'زمان پایان (ث)',
+        'selected_file': '📁 انتخاب شده برای تحلیل',
+        'using_pose_file': 'استفاده از فایل پوز JSON',
+        'using_video': 'استفاده از فایل ویدئو',
+        'clear_selection': 'پاک کردن',
         'activity_chart': 'نمودار فعالیت',
         'frames': 'فریم',
         'seconds': 'ثانیه',
@@ -366,6 +374,16 @@ with col3:
         type=['json'],
         key='pose_uploader'
     )
+
+# Show which file will be used for analysis
+if uploaded_pose or uploaded_video:
+    st.markdown("")
+    if uploaded_pose:
+        st.success(f"**{get_text('selected_file', lang)}:** {get_text('using_pose_file', lang)} ({uploaded_pose.name})")
+        if uploaded_video:
+            st.caption(f"⚠️ {'فایل ویدئو نادیده گرفته می‌شود' if lang == 'fa' else 'Video file will be ignored'}")
+    elif uploaded_video:
+        st.info(f"**{get_text('selected_file', lang)}:** {get_text('using_video', lang)} ({uploaded_video.name})")
 
 # Lane selection with athlete detection
 st.markdown("")
@@ -2165,8 +2183,8 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Speed Climbing Performance Analysis v1.5 (Phase 7 Complete)<br>
-    تحلیل عملکرد سنگنوردی سرعتی نسخه ۱.۵
+    Speed Climbing Performance Analysis v0.1.0<br>
+    تحلیل عملکرد سنگنوردی سرعتی نسخه ۰.۱.۰
     </div>
     """,
     unsafe_allow_html=True
