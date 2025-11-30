@@ -116,6 +116,7 @@ python examples/analyze_single_video.py video.mp4 -o report.txt
 
 ## Project Structure
 
+```
 speed_climbing_performance_analysis/
 ├── speed_climbing/              # Main package
 │   ├── vision/                  # Computer vision modules
@@ -127,11 +128,13 @@ speed_climbing_performance_analysis/
 │   ├── analyze_video.py         # CLI analysis script
 │   └── download_sample_data.py  # Sample data downloader
 ├── examples/                    # Example scripts
+│   └── sample_output/           # Sample pose & feedback files
 ├── configs/                     # Configuration files
 ├── Dockerfile                   # Docker configuration
 ├── docker-compose.yaml          # Docker Compose for Coolify
 ├── requirements.txt             # Python dependencies
 └── README.md                    # Documentation
+```
 
 ## Deployment with Coolify
 
@@ -337,6 +340,7 @@ python examples/analyze_single_video.py video.mp4 -o report.txt
 
 ## ساختار پروژه
 
+```
 speed_climbing_performance_analysis/
 ├── speed_climbing/              # پکیج اصلی
 │   ├── vision/                  # ماژول‌های بینایی کامپیوتری
@@ -348,11 +352,13 @@ speed_climbing_performance_analysis/
 │   ├── analyze_video.py         # اسکریپت تحلیل خط فرمان
 │   └── download_sample_data.py  # دانلودکننده داده نمونه
 ├── examples/                    # اسکریپت‌های نمونه
+│   └── sample_output/           # فایل‌های نمونه پوز و بازخورد
 ├── configs/                     # فایل‌های پیکربندی
 ├── Dockerfile                   # پیکربندی Docker
 ├── docker-compose.yaml          # Docker Compose برای Coolify
 ├── requirements.txt             # وابستگی‌های Python
 └── README.md                    # مستندات
+```
 
 ## استقرار با Coolify
 
