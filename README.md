@@ -51,7 +51,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run web interface
-streamlit run scripts/review_interface/app.py
+streamlit run scripts/analysis_app/app.py
 ```
 
 ### Download Sample Data (Optional)
@@ -275,7 +275,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # اجرای رابط وب
-streamlit run scripts/review_interface/app.py
+streamlit run scripts/analysis_app/app.py
 ```
 
 ### دانلود داده‌های نمونه (اختیاری)

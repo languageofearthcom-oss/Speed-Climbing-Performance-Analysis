@@ -26,13 +26,17 @@ FROM python:3.11-slim AS production
 
 # Install runtime dependencies
 # - wget: Required for health checks (Coolify requirement)
-# - libgl1-mesa-glx: OpenCV dependency
+# - libgl1: OpenCV dependency (replaces deprecated libgl1-mesa-glx)
 # - libglib2.0-0: OpenCV dependency
+# - libsm6, libxext6, libxrender1: X11 dependencies for headless rendering
 # - ffmpeg: Video processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
