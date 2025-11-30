@@ -56,6 +56,7 @@ TRANSLATIONS = {
         'subheader': 'Get personalized feedback on your climbing technique',
         'upload_section': '📤 Upload Your Data',
         'upload_video': 'Upload Video (MP4, MOV, AVI)',
+        'video_format_tip': '💡 For best results, use H.264 encoded videos. iPhone/Android videos may need conversion.',
         'upload_pose': 'Upload Pose File (JSON)',
         'or_text': '— OR —',
         'use_sample': '📂 Use Sample Data',
@@ -104,13 +105,26 @@ TRANSLATIONS = {
         'show_angles': 'Show Joint Angles',
         'knee_angle': 'Knee',
         'elbow_angle': 'Elbow',
+        'unsupported_codec': '⚠️ Unsupported Video Format',
+        'unsupported_codec_msg': 'This video uses AV1 codec which is not fully supported. Please convert to H.264 format.',
+        'convert_video_tip': '💡 To convert: Use HandBrake or FFmpeg with H.264/MP4 output.',
         'race_segment': '🏁 Race Segment Detection',
         'race_start': 'Start Frame',
         'race_end': 'End Frame',
         'race_duration': 'Duration',
+        'manual_adjustment': '✏️ Manual Adjustment',
+        'use_manual_segment': 'Use manual segment',
+        'reset_to_auto': 'Reset to Auto-detect',
         'race_confidence': 'Detection Confidence',
         'race_method': 'Detection Method',
         'race_info': 'Only frames during the race are analyzed',
+        'reanalyze_button': '🔄 Re-analyze with Manual Segment',
+        'reanalyzing': 'Re-analyzing with manual segment...',
+        'input_mode': 'Input Mode',
+        'by_frames': 'By Frames',
+        'by_seconds': 'By Seconds',
+        'start_time': 'Start Time (s)',
+        'end_time': 'End Time (s)',
         'activity_chart': 'Activity Chart',
         'frames': 'frames',
         'seconds': 'seconds',
@@ -142,6 +156,7 @@ TRANSLATIONS = {
         'subheader': 'بازخورد شخصی‌سازی شده برای تکنیک صعود شما',
         'upload_section': '📤 آپلود داده',
         'upload_video': 'آپلود ویدئو (MP4, MOV, AVI)',
+        'video_format_tip': '💡 برای بهترین نتیجه، از ویدئوهای H.264 استفاده کنید. ویدئوهای iPhone/Android ممکن است نیاز به تبدیل داشته باشند.',
         'upload_pose': 'آپلود فایل پوز (JSON)',
         'or_text': '— یا —',
         'use_sample': '📂 استفاده از داده نمونه',
@@ -190,13 +205,26 @@ TRANSLATIONS = {
         'show_angles': 'نمایش زوایای مفصل',
         'knee_angle': 'زانو',
         'elbow_angle': 'آرنج',
+        'unsupported_codec': '⚠️ فرمت ویدئو پشتیبانی نمی‌شود',
+        'unsupported_codec_msg': 'این ویدئو از کدک AV1 استفاده می‌کند که کاملاً پشتیبانی نمی‌شود. لطفاً به فرمت H.264 تبدیل کنید.',
+        'convert_video_tip': '💡 برای تبدیل: از HandBrake یا FFmpeg با خروجی H.264/MP4 استفاده کنید.',
         'race_segment': '🏁 تشخیص بخش مسابقه',
         'race_start': 'فریم شروع',
         'race_end': 'فریم پایان',
         'race_duration': 'مدت',
+        'manual_adjustment': '✏️ تنظیم دستی',
+        'use_manual_segment': 'استفاده از بخش دستی',
+        'reset_to_auto': 'بازگشت به تشخیص خودکار',
         'race_confidence': 'اطمینان تشخیص',
         'race_method': 'روش تشخیص',
         'race_info': 'فقط فریم‌های زمان مسابقه تحلیل می‌شوند',
+        'reanalyze_button': '🔄 تحلیل مجدد با بخش دستی',
+        'reanalyzing': 'در حال تحلیل مجدد با بخش دستی...',
+        'input_mode': 'حالت ورودی',
+        'by_frames': 'بر اساس فریم',
+        'by_seconds': 'بر اساس ثانیه',
+        'start_time': 'زمان شروع (ث)',
+        'end_time': 'زمان پایان (ث)',
         'activity_chart': 'نمودار فعالیت',
         'frames': 'فریم',
         'seconds': 'ثانیه',
@@ -325,6 +353,7 @@ with col1:
         type=['mp4', 'mov', 'avi', 'mkv'],
         key='video_uploader'
     )
+    st.caption(get_text('video_format_tip', lang))
 
 with col2:
     st.markdown(f"<div style='text-align: center; padding-top: 30px;'>{get_text('or_text', lang)}</div>",
@@ -449,6 +478,38 @@ st.markdown("---")
 # =============================================================================
 # ANALYSIS FUNCTIONS
 # =============================================================================
+
+def check_video_codec(video_path: str) -> tuple:
+    """
+    Check video codec and return (is_supported, codec_name, warning_message).
+
+    Returns:
+        Tuple of (is_supported: bool, codec_name: str, warning: str or None)
+    """
+    import cv2
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return False, "unknown", "Cannot open video file"
+
+    # Get codec fourcc
+    fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+    codec_name = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)])
+    cap.release()
+
+    # Known problematic codecs
+    unsupported_codecs = ['av01', 'AV01', 'av1c', 'AV1C']
+
+    if codec_name.lower().strip() in [c.lower() for c in unsupported_codecs]:
+        return False, codec_name, "AV1 codec not fully supported"
+
+    # HEVC/H.265 may also have issues
+    hevc_codecs = ['hvc1', 'HVC1', 'hev1', 'HEV1', 'hevc', 'HEVC']
+    if codec_name.strip() in hevc_codecs:
+        return True, codec_name, "H.265/HEVC may have compatibility issues"
+
+    return True, codec_name, None
+
 
 def load_pose_data(file_content: str) -> Optional[Dict]:
     """Load pose data from JSON content."""
@@ -1515,44 +1576,59 @@ if st.button(get_text('analyze_button', lang), type="primary", use_container_wid
 
     elif uploaded_video:
         # Process video (requires pose extraction)
-        st.info(get_text('processing_video', lang))
-
         try:
             # Save video to temp file
             with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
                 tmp.write(uploaded_video.read())
                 tmp_path = tmp.name
 
-            # Create progress bar
-            progress_bar = st.progress(0, text="Extracting poses...")
+            # Check video codec before processing
+            is_supported, codec_name, codec_warning = check_video_codec(tmp_path)
 
-            # Process video frame by frame
-            pose_data = process_video_to_poses(tmp_path, progress_bar)
+            if not is_supported:
+                st.error(f"### {get_text('unsupported_codec', lang)}")
+                st.warning(get_text('unsupported_codec_msg', lang))
+                st.info(get_text('convert_video_tip', lang))
+                st.caption(f"Detected codec: {codec_name}")
+                # Clean up temp file
+                Path(tmp_path).unlink(missing_ok=True)
+            else:
+                # Show warning for potentially problematic codecs
+                if codec_warning:
+                    st.warning(f"⚠️ {codec_warning}")
 
-            # Clean up temp file
-            Path(tmp_path).unlink(missing_ok=True)
+                st.info(get_text('processing_video', lang))
 
-            if pose_data:
-                st.session_state['pose_data'] = pose_data
-                st.session_state['selected_lane'] = 'left'
-                progress_bar.progress(100, text="Analyzing features...")
+                # Create progress bar
+                progress_bar = st.progress(0, text="Extracting poses...")
 
-                # For uploaded videos, always use 'left' lane (single athlete)
-                features = extract_features_from_poses(pose_data, 'left')
-                if features:
-                    feedback = run_analysis(features, lang)
-                    if feedback:
-                        st.session_state['analysis_result'] = feedback
-                        progress_bar.empty()
+                # Process video frame by frame
+                pose_data = process_video_to_poses(tmp_path, progress_bar)
+
+                # Clean up temp file
+                Path(tmp_path).unlink(missing_ok=True)
+
+                if pose_data:
+                    st.session_state['pose_data'] = pose_data
+                    st.session_state['selected_lane'] = 'left'
+                    progress_bar.progress(100, text="Analyzing features...")
+
+                    # For uploaded videos, always use 'left' lane (single athlete)
+                    features = extract_features_from_poses(pose_data, 'left')
+                    if features:
+                        feedback = run_analysis(features, lang)
+                        if feedback:
+                            st.session_state['analysis_result'] = feedback
+                            progress_bar.empty()
+                        else:
+                            progress_bar.empty()
+                            st.error("Failed to generate feedback")
                     else:
                         progress_bar.empty()
-                        st.error("Failed to generate feedback")
+                        st.error("Failed to extract features from poses")
                 else:
                     progress_bar.empty()
-                    st.error("Failed to extract features from poses")
-            else:
-                progress_bar.empty()
-                st.error("Failed to process video")
+                    st.error("Failed to process video")
 
         except Exception as e:
             st.error(f"{get_text('error_processing', lang)}: {e}")
@@ -1702,10 +1778,11 @@ if st.session_state['analysis_result']:
 if st.session_state.get('pose_data') and st.session_state.get('analysis_result'):
     st.markdown("---")
 
-    with st.expander(get_text('race_segment', lang), expanded=False):
+    with st.expander(get_text('race_segment', lang), expanded=True):
         pose_data = st.session_state['pose_data']
         selected_lane = st.session_state.get('selected_lane', 'left')
         fps = pose_data.get('metadata', {}).get('fps', 30.0)
+        total_frames = len(pose_data.get('frames', []))
 
         # Detect race segment
         race_result = detect_race_segment_from_poses(pose_data, selected_lane, fps)
@@ -1713,7 +1790,16 @@ if st.session_state.get('pose_data') and st.session_state.get('analysis_result')
         if race_result:
             segment, raw_activity, smoothed_activity = race_result
 
-            # Display race segment info
+            # Initialize session state for manual segment if not exists
+            if 'manual_segment_start' not in st.session_state:
+                st.session_state['manual_segment_start'] = segment.start_frame
+            if 'manual_segment_end' not in st.session_state:
+                st.session_state['manual_segment_end'] = segment.end_frame
+            if 'use_manual_segment' not in st.session_state:
+                st.session_state['use_manual_segment'] = False
+
+            # Display auto-detected race segment info
+            st.markdown("**Auto-detected:**")
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
@@ -1742,6 +1828,127 @@ if st.session_state.get('pose_data') and st.session_state.get('analysis_result')
                     get_text('race_confidence', lang),
                     f"{confidence_pct:.0f}%"
                 )
+
+            # Manual adjustment section
+            st.markdown("---")
+            st.markdown(f"### {get_text('manual_adjustment', lang)}")
+
+            use_manual = st.checkbox(
+                get_text('use_manual_segment', lang),
+                value=st.session_state['use_manual_segment'],
+                key='manual_segment_checkbox'
+            )
+            st.session_state['use_manual_segment'] = use_manual
+
+            if use_manual:
+                # Initialize input mode if not exists
+                if 'segment_input_mode' not in st.session_state:
+                    st.session_state['segment_input_mode'] = 'frames'
+
+                # Input mode toggle
+                input_mode = st.radio(
+                    get_text('input_mode', lang),
+                    options=['frames', 'seconds'],
+                    format_func=lambda x: get_text('by_frames' if x == 'frames' else 'by_seconds', lang),
+                    horizontal=True,
+                    key='segment_input_mode_radio'
+                )
+                st.session_state['segment_input_mode'] = input_mode
+
+                col1, col2 = st.columns(2)
+
+                if input_mode == 'frames':
+                    with col1:
+                        manual_start = st.number_input(
+                            get_text('race_start', lang),
+                            min_value=0,
+                            max_value=total_frames - 1,
+                            value=st.session_state['manual_segment_start'],
+                            key='manual_start_input'
+                        )
+                        st.session_state['manual_segment_start'] = manual_start
+
+                    with col2:
+                        manual_end = st.number_input(
+                            get_text('race_end', lang),
+                            min_value=1,
+                            max_value=total_frames,
+                            value=st.session_state['manual_segment_end'],
+                            key='manual_end_input'
+                        )
+                        st.session_state['manual_segment_end'] = manual_end
+                else:
+                    # Input by seconds
+                    total_seconds = total_frames / fps if fps > 0 else 0
+                    current_start_sec = st.session_state['manual_segment_start'] / fps if fps > 0 else 0
+                    current_end_sec = st.session_state['manual_segment_end'] / fps if fps > 0 else 0
+
+                    with col1:
+                        manual_start_sec = st.number_input(
+                            get_text('start_time', lang),
+                            min_value=0.0,
+                            max_value=total_seconds - 0.1,
+                            value=current_start_sec,
+                            step=0.1,
+                            format="%.1f",
+                            key='manual_start_sec_input'
+                        )
+                        # Convert to frames
+                        st.session_state['manual_segment_start'] = int(manual_start_sec * fps)
+
+                    with col2:
+                        manual_end_sec = st.number_input(
+                            get_text('end_time', lang),
+                            min_value=0.1,
+                            max_value=total_seconds,
+                            value=current_end_sec,
+                            step=0.1,
+                            format="%.1f",
+                            key='manual_end_sec_input'
+                        )
+                        # Convert to frames
+                        st.session_state['manual_segment_end'] = int(manual_end_sec * fps)
+
+                # Calculate manual duration
+                manual_start_frame = st.session_state['manual_segment_start']
+                manual_end_frame = st.session_state['manual_segment_end']
+                manual_duration = (manual_end_frame - manual_start_frame) / fps if fps > 0 else 0
+                st.info(f"📏 {get_text('race_duration', lang)}: {manual_duration:.2f} {get_text('seconds', lang)} ({manual_end_frame - manual_start_frame} {get_text('frames', lang)})")
+
+                # Buttons row
+                col1, col2 = st.columns(2)
+                with col1:
+                    # Reset button
+                    if st.button(get_text('reset_to_auto', lang), type="secondary", use_container_width=True):
+                        st.session_state['manual_segment_start'] = segment.start_frame
+                        st.session_state['manual_segment_end'] = segment.end_frame
+                        st.session_state['use_manual_segment'] = False
+                        st.rerun()
+
+                with col2:
+                    # Re-analyze button
+                    if st.button(get_text('reanalyze_button', lang), type="primary", use_container_width=True):
+                        with st.spinner(get_text('reanalyzing', lang)):
+                            # Filter frames to manual segment
+                            all_frames = pose_data.get('frames', [])
+                            filtered_frames = all_frames[manual_start_frame:manual_end_frame]
+
+                            # Create filtered pose data
+                            filtered_pose_data = {
+                                'metadata': pose_data.get('metadata', {}),
+                                'frames': filtered_frames
+                            }
+
+                            # Re-extract features with filtered data
+                            features = extract_features_from_poses(filtered_pose_data, selected_lane)
+                            if features:
+                                feedback = run_analysis(features, lang)
+                                if feedback:
+                                    st.session_state['analysis_result'] = feedback
+                                    st.success("✅ " + (
+                                        "تحلیل مجدد انجام شد!" if lang == 'fa' else "Re-analysis complete!"
+                                    ))
+                                    st.rerun()
 
             # Info about race segment usage
             st.info(f"ℹ️ {get_text('race_info', lang)}")
@@ -1869,7 +2076,7 @@ if uploaded_video:
             # Generate sample frames (faster than full video)
             frames = generate_skeleton_frames(
                 tmp_path,
-                max_frames=12,
+                max_frames=30,  # Increased from 12 for better preview
                 show_connections=show_connections,
                 show_keypoints=show_keypoints,
                 show_angles=show_angles,
