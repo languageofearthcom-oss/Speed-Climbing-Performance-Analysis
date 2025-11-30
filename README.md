@@ -21,6 +21,8 @@ AI-powered speed climbing performance analysis using computer vision and machine
 - **Web Interface**: Streamlit-based review dashboard
 - **Docker Ready**: Easy deployment with Docker and Coolify
 
+> 📘 **Learn More**: Read our [System Architecture & Workflow](SYSTEM_ARCHITECTURE.md) guide to understand how it works.
+
 ## Quick Start
 
 ### Option 1: Docker (Recommended)
@@ -54,14 +56,26 @@ pip install -r requirements.txt
 streamlit run scripts/analysis_app/app.py
 ```
 
-### Download Sample Data (Optional)
+### Sample Files (Included)
+
+Sample files are included in the repository for testing:
+
+- `examples/sample_output/pose_sample.json` - Sample pose input data
+- `examples/sample_output/sample_feedback.json` - Sample analysis output
+
+You can use these directly with the web interface without downloading anything.
+
+### Download Additional Data (Optional)
 
 ```bash
-# Download sample pose data and feedback examples
+# Download additional pose data and video examples
 python scripts/download_sample_data.py
 
 # Include sample video (larger download)
 python scripts/download_sample_data.py --include-video
+
+# Download race segment data (for advanced analysis)
+python scripts/download_sample_data.py --download-races
 
 # Or create offline samples without downloading
 python scripts/download_sample_data.py --offline
@@ -102,39 +116,22 @@ python examples/analyze_single_video.py video.mp4 -o report.txt
 
 ## Project Structure
 
-```
 speed_climbing_performance_analysis/
 ├── speed_climbing/              # Main package
 │   ├── vision/                  # Computer vision modules
-│   │   ├── pose.py              # BlazePose extraction
-│   │   ├── lanes.py             # Lane detection
-│   │   ├── holds.py             # Hold detection
-│   │   └── calibration.py       # Camera utilities
 │   ├── analysis/                # Analysis modules
-│   │   ├── features/            # Feature extraction
-│   │   │   ├── extractor.py     # Main feature extractor
-│   │   │   ├── posture.py       # Posture analysis
-│   │   │   ├── efficiency.py    # Movement efficiency
-│   │   │   └── frequency.py     # Movement frequency
-│   │   └── feedback/            # Feedback generation
-│   │       ├── feedback_generator.py  # Main generator
-│   │       ├── fuzzy_engine.py  # Fuzzy logic engine
-│   │       └── baseline.py      # Professional baselines
 │   ├── processing/              # Data processing
-│   │   ├── athlete_centric.py   # Coordinate normalization
-│   │   └── dropout.py           # Handle missing data
 │   └── core/                    # Core utilities
-│       └── settings.py          # Configuration
 ├── scripts/
-│   ├── review_interface/        # Streamlit web app
+│   ├── analysis_app/            # Streamlit web app
+│   ├── analyze_video.py         # CLI analysis script
 │   └── download_sample_data.py  # Sample data downloader
 ├── examples/                    # Example scripts
-├── data/                        # Data directory (videos not included)
-├── tests/                       # Test suite
+├── configs/                     # Configuration files
 ├── Dockerfile                   # Docker configuration
-├── docker-compose.yml           # Docker Compose for Coolify
-└── requirements.txt             # Python dependencies
-```
+├── docker-compose.yaml          # Docker Compose for Coolify
+├── requirements.txt             # Python dependencies
+└── README.md                    # Documentation
 
 ## Deployment with Coolify
 
@@ -142,10 +139,10 @@ This project is configured for easy deployment with [Coolify](https://coolify.io
 
 1. Connect your repository in Coolify
 2. Select "Docker Compose" as build type
-3. Coolify will automatically detect `docker-compose.yml`
+3. Coolify will automatically detect `docker-compose.yaml`
 4. Deploy! The web interface will be available on port 8501
 
-See [docker-compose.yml](docker-compose.yml) for configuration details.
+See [docker-compose.yaml](docker-compose.yaml) for configuration details.
 
 ## Sample Output
 
@@ -245,6 +242,8 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 - **رابط وب**: داشبورد بررسی مبتنی بر Streamlit
 - **آماده Docker**: استقرار آسان با Docker و Coolify
 
+> 📘 **بیشتر بدانید**: برای درک نحوه کارکرد سیستم، راهنمای [معماری سیستم و جریان کار](SYSTEM_ARCHITECTURE.md) را مطالعه کنید.
+
 ## شروع سریع
 
 ### روش 1: Docker (پیشنهادی)
@@ -278,16 +277,28 @@ pip install -r requirements.txt
 streamlit run scripts/analysis_app/app.py
 ```
 
-### دانلود داده‌های نمونه (اختیاری)
+### فایل‌های نمونه (شامل شده)
+
+فایل‌های نمونه برای تست در مخزن موجود هستند:
+
+- `examples/sample_output/pose_sample.json` - داده پوز نمونه
+- `examples/sample_output/sample_feedback.json` - خروجی تحلیل نمونه
+
+می‌توانید این فایل‌ها را مستقیماً در رابط وب استفاده کنید.
+
+### دانلود داده‌های اضافی (اختیاری)
 
 ```bash
-# دانلود داده‌های پوز نمونه و نمونه‌های بازخورد
+# دانلود داده‌های پوز و ویدئوهای نمونه اضافی
 python scripts/download_sample_data.py
 
 # شامل ویدئوی نمونه (دانلود بزرگ‌تر)
 python scripts/download_sample_data.py --include-video
 
-# یا ایجاد نمونه‌های آفلاین بدون دانلود
+# دانلود داده‌های race segments (برای تحلیل پیشرفته)
+python scripts/download_sample_data.py --download-races
+
+# ایجاد نمونه‌های آفلاین بدون دانلود
 python scripts/download_sample_data.py --offline
 ```
 
@@ -326,39 +337,22 @@ python examples/analyze_single_video.py video.mp4 -o report.txt
 
 ## ساختار پروژه
 
-```
 speed_climbing_performance_analysis/
 ├── speed_climbing/              # پکیج اصلی
 │   ├── vision/                  # ماژول‌های بینایی کامپیوتری
-│   │   ├── pose.py              # استخراج BlazePose
-│   │   ├── lanes.py             # تشخیص مسیر
-│   │   ├── holds.py             # تشخیص گیره‌ها
-│   │   └── calibration.py       # ابزارهای دوربین
 │   ├── analysis/                # ماژول‌های تحلیل
-│   │   ├── features/            # استخراج ویژگی
-│   │   │   ├── extractor.py     # استخراج‌کننده اصلی
-│   │   │   ├── posture.py       # تحلیل وضعیت بدن
-│   │   │   ├── efficiency.py    # کارایی حرکت
-│   │   │   └── frequency.py     # فرکانس حرکت
-│   │   └── feedback/            # تولید بازخورد
-│   │       ├── feedback_generator.py  # تولیدکننده اصلی
-│   │       ├── fuzzy_engine.py  # موتور منطق فازی
-│   │       └── baseline.py      # معیارهای حرفه‌ای
 │   ├── processing/              # پردازش داده
-│   │   ├── athlete_centric.py   # نرمال‌سازی مختصات
-│   │   └── dropout.py           # مدیریت داده‌های گمشده
 │   └── core/                    # ابزارهای پایه
-│       └── settings.py          # تنظیمات
 ├── scripts/
-│   ├── review_interface/        # برنامه وب Streamlit
+│   ├── analysis_app/            # برنامه وب Streamlit
+│   ├── analyze_video.py         # اسکریپت تحلیل خط فرمان
 │   └── download_sample_data.py  # دانلودکننده داده نمونه
 ├── examples/                    # اسکریپت‌های نمونه
-├── data/                        # پوشه داده (ویدئوها شامل نمی‌شود)
-├── tests/                       # مجموعه تست
+├── configs/                     # فایل‌های پیکربندی
 ├── Dockerfile                   # پیکربندی Docker
-├── docker-compose.yml           # Docker Compose برای Coolify
-└── requirements.txt             # وابستگی‌های Python
-```
+├── docker-compose.yaml          # Docker Compose برای Coolify
+├── requirements.txt             # وابستگی‌های Python
+└── README.md                    # مستندات
 
 ## استقرار با Coolify
 
@@ -366,10 +360,10 @@ speed_climbing_performance_analysis/
 
 1. مخزن خود را در Coolify متصل کنید
 2. "Docker Compose" را به عنوان نوع ساخت انتخاب کنید
-3. Coolify به طور خودکار `docker-compose.yml` را تشخیص می‌دهد
+3. Coolify به طور خودکار `docker-compose.yaml` را تشخیص می‌دهد
 4. استقرار! رابط وب در پورت 8501 در دسترس خواهد بود
 
-برای جزئیات پیکربندی، [docker-compose.yml](docker-compose.yml) را ببینید.
+برای جزئیات پیکربندی، [docker-compose.yaml](docker-compose.yaml) را ببینید.
 
 ## نمونه خروجی
 
