@@ -29,6 +29,7 @@ FROM python:3.11-slim AS production
 # - libgl1: OpenCV dependency (replaces deprecated libgl1-mesa-glx)
 # - libglib2.0-0: OpenCV dependency
 # - libsm6, libxext6, libxrender1: X11 dependencies for headless rendering
+# - libegl1, libgles2: EGL/OpenGL ES for MediaPipe CPU fallback
 # - ffmpeg: Video processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
@@ -37,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender1 \
+    libegl1 \
+    libgles2 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -76,6 +79,14 @@ ENV STREAMLIT_SERVER_PORT=8501
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# MediaPipe/OpenCV CPU-only configuration (for headless Docker)
+# Disable CUDA/GPU to prevent EGL errors
+ENV CUDA_VISIBLE_DEVICES=""
+ENV MEDIAPIPE_DISABLE_GPU=1
+# Use software rendering
+ENV LIBGL_ALWAYS_SOFTWARE=1
+ENV PYOPENGL_PLATFORM=egl
 
 # Start Streamlit application
 # Default: New user-facing analysis app (Phase 5)
