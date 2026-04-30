@@ -66,7 +66,8 @@ ENV/
 # Data directories
 data/raw_videos/
 data/race_segments/
-data/processed/
+data/processed/*
+!data/processed/poses/
 data/calibration/
 data/ml_dataset/
 
@@ -88,6 +89,10 @@ data/ml_dataset/
 # Keep config files
 !configs/*.json
 !configs/*.yaml
+
+# Keep extracted pose time-series for PhD ML Phase 3 (1D-CNN input)
+!data/processed/poses/
+!data/processed/poses/**
 
 # -----------------------------------------------------------------------------
 # Environment & Secrets
