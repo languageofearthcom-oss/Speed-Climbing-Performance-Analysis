@@ -19,10 +19,39 @@
 
 | Phase | Title | Branch | Status | Approved |
 |-------|-------|--------|--------|----------|
-| 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | In Review | ⏳ |
-| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pending | — |
-| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pending | — |
+| 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | Pipeline executed, results documented, awaiting sign-off | ⏳ |
+| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pending — class-imbalance handling required | — |
+| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pending — 114 / 188 pose JSONs available (61% coverage) | — |
 | 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Pending | — |
+
+---
+
+## Phase 1 Empirical Results (commit `140fbd4`)
+
+**K-Means k\*=2 chosen by silhouette** (0.423 at k=2 vs 0.252 at k=3 vs 0.139–0.152 at k≥4).
+
+| Metric | Value |
+|---|---|
+| Silhouette | 0.423 (below 0.5 target — typical for 15-D kinematic data) |
+| Davies-Bouldin | 1.617 |
+| Calinski-Harabasz | 36.0 |
+| Bootstrap-ARI | **0.634 ± 0.252** (weakly stable per Hennig 2007) |
+| K-Means × Hierarchical (Ward) ARI | **0.851** (strong agreement, geometric structure is real) |
+| K-Means × GMM ARI | 0.327 (GMM at k=5 disagrees) |
+| DBSCAN | 2 clusters but 34.5% noise (density structure weak) |
+
+**Pseudo-label distribution**: 226 advanced / 20 beginner ≈ 92% / 8% — **class-imbalanced**.
+Skill-proxy separation: Welch p = 0.0022, Mann-Whitney p = 1.6e-5, Cohen's d = -0.92 (large effect).
+
+### Implications for Phase 2
+- Use `class_weight='balanced'` in Random Forest / XGBoost (or SMOTE).
+- Report stratified F1 + per-class precision/recall — never raw accuracy.
+- Baseline majority-class accuracy is 91.9% — anything ≤ that is uninformative.
+
+### Implications for Phase 3
+- 114 single-athlete pose JSONs at `data/processed/poses/single_athlete/` (committed in `c600dea`).
+- 61% race coverage. **Schema differs** from existing 10 dual-lane samples — phase-3 loader must handle both.
+- Realised supervised-training set size = labeled CSV rows ∩ available pose JSONs (computed in Phase 3).
 
 ---
 
