@@ -5,3 +5,4 @@ umap-learn==0.5.5      # UMAP visualization (Phase 1)
 xgboost==2.0.3         # Gradient boosting baseline (Phase 2)
 hdbscan==0.8.33        # Optional: density-based fallback (Phase 1)
 joblib==1.3.2          # Model persistence
+imbalanced-learn==0.12.4  # SMOTE + cost-sensitive utilities (Phase 2)

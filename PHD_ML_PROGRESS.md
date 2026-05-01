@@ -20,7 +20,7 @@
 | Phase | Title | Branch | Status | Approved |
 |-------|-------|--------|--------|----------|
 | 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | Pipeline executed, results documented, awaiting sign-off | ⏳ |
-| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pending — class-imbalance handling required | — |
+| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Code committed, awaiting user execution | ⏳ |
 | 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pending — 114 / 188 pose JSONs available (61% coverage) | — |
 | 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Pending | — |
 
@@ -52,6 +52,52 @@ Skill-proxy separation: Welch p = 0.0022, Mann-Whitney p = 1.6e-5, Cohen's d = -
 - 114 single-athlete pose JSONs at `data/processed/poses/single_athlete/` (committed in `c600dea`).
 - 61% race coverage. **Schema differs** from existing 10 dual-lane samples — phase-3 loader must handle both.
 - Realised supervised-training set size = labeled CSV rows ∩ available pose JSONs (computed in Phase 3).
+
+---
+
+## Phase 2 Deliverables
+
+**Goal**: Train class-imbalance-aware supervised baselines (RF, XGBoost, LR, Dummy) on the Phase-1 labels and produce a defensible reference for Phase 3's 1D-CNN.
+
+### Pipeline Stages
+1. Load Phase-1 labels (`labeled_dataset.csv`) — binary target `cluster_kmeans_label`.
+2. Build six-model lineup: Dummy (floor), LR-balanced, RF-balanced, XGB-spw, RF-SMOTE, XGB-SMOTE.
+3. Stratified-5-Fold CV — SMOTE applied INSIDE training fold only (no leakage).
+4. Compute per-fold and aggregated metrics — Macro-F1, F1-minority, ROC-AUC, PR-AUC, per-class P/R, confusion matrix. **Accuracy reported only to surface the 91.9% trivial floor.**
+5. Native + permutation feature importance per non-trivial model.
+6. Five diagnostic figures saved to `figures/phd_ml/phase2/`.
+
+### Files Added
+```
+phd_ml/phase2/
+├── PHASE2_RATIONALE.md          # Markdown twin
+├── PHASE2_METHODOLOGY.docx      # Bilingual Word doc (built via docx skill)
+├── __init__.py
+├── config.py
+├── loader.py
+├── models.py
+├── evaluation.py
+├── importance.py
+├── viz.py
+└── run_pipeline.py
+phd_ml/docx_builder/build_phase2_docx.js
+```
+
+### How to Run
+```bash
+git fetch origin && git checkout phd-ml/phase2-baseline
+pip install -r requirements.txt -r phd_ml/requirements.txt
+python -m phd_ml.phase2.run_pipeline
+```
+
+### Phase 2 Sign-off Checklist
+- [ ] Methodology document reviewed (`PHASE2_METHODOLOGY.docx` or `PHASE2_RATIONALE.md`)
+- [ ] Six-model lineup approved
+- [ ] Imbalance strategies (cost-sensitive + SMOTE) approved
+- [ ] Metric set (Macro-F1, F1-minority, ROC-AUC, PR-AUC) approved
+- [ ] Outcome bands acknowledged (≥0.80 strong / 0.65–0.80 reasonable / 0.50–0.65 weak / <0.50 failure)
+- [ ] Pipeline executed and `data/phd_ml/phase2/results.json` reviewed
+- [ ] Approval given to start Phase 3 (1D-CNN)
 
 ---
 
