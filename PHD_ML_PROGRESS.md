@@ -20,8 +20,8 @@
 | Phase | Title | Branch | Status | Approved |
 |-------|-------|--------|--------|----------|
 | 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | Pipeline executed, results documented, awaiting sign-off | ⏳ |
-| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Code committed, awaiting user execution | ⏳ |
-| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pending — 114 / 188 pose JSONs available (61% coverage) | — |
+| 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pipeline executed (commit `24d12df`), results documented, awaiting sign-off | ⏳ |
+| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Scaffold committed — 114 / 188 pose JSONs available (61% coverage) | — |
 | 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Pending | — |
 
 ---
@@ -52,6 +52,37 @@ Skill-proxy separation: Welch p = 0.0022, Mann-Whitney p = 1.6e-5, Cohen's d = -
 - 114 single-athlete pose JSONs at `data/processed/poses/single_athlete/` (committed in `c600dea`).
 - 61% race coverage. **Schema differs** from existing 10 dual-lane samples — phase-3 loader must handle both.
 - Realised supervised-training set size = labeled CSV rows ∩ available pose JSONs (computed in Phase 3).
+
+---
+
+## Phase 2 Empirical Results (commit `24d12df`, executed 2026-05-11)
+
+Stratified-5-Fold CV on 246 samples (226 advanced / 20 beginner). Majority-class floor = **91.87% accuracy** (uninformative). Six models trained successfully; `imbalanced-learn==0.14.1` and `xgboost==3.2.0` installed.
+
+| Model | F1-macro | F1-minority | ROC-AUC | PR-AUC |
+|---|---|---|---|---|
+| dummy_majority (floor) | 0.479 ± 0.000 | 0.000 ± 0.000 | 0.500 | 0.081 |
+| **logreg_balanced** ⭐ | **0.978 ± 0.045** | **0.960 ± 0.080** | **1.000** | **1.000** |
+| rf_balanced | 0.949 ± 0.070 | 0.905 ± 0.131 | 1.000 | 0.990 |
+| xgb_scale_pos_weight | 0.972 ± 0.034 | 0.949 ± 0.063 | 1.000 | 1.000 |
+| rf_smote | 0.969 ± 0.038 | 0.943 ± 0.070 | 0.999 | 0.990 |
+| xgb_smote | 0.972 ± 0.034 | 0.949 ± 0.063 | 1.000 | 1.000 |
+
+**Pooled confusion** (over all CV folds, 246 samples):
+- `logreg_balanced`: 20/20 beginners caught, 2 FP — **best minority recall**
+- `xgb_scale_pos_weight` / `xgb_smote`: 19/20 caught, 1 FP
+- `rf_smote`: 18/20 caught, 0 FP; `rf_balanced`: 17/20 caught, 0 FP
+
+**Top features** (consistent across permutation + native): `post_body_lean_std` (dominant), `post_avg_body_lean`, `freq_foot_movement_amplitude`, `post_max_reach_ratio`, `post_elbow_angle_std`. Aligns with Phase-1 Cohen's d = -0.92 on body lean.
+
+### Critical caveat (carries through to Phase 3 framing)
+**ROC-AUC = 1.000 is tautological**, not a triumph. Phase-1 K-Means labels were derived from the SAME 15 features now used as Phase-2 inputs — the models are recovering a deterministic partition of the feature space. Any model with sufficient capacity will saturate here. **The real Phase-3 test is whether a 1D-CNN trained on raw pose time-series (not engineered summary features) can recover the same partition.**
+
+### Implications for Phase 3
+- **Beat-baseline target**: ≥ 0.97 macro-F1 (logreg level), NOT 0.92 floor.
+- **Honest range**: 0.65 – 0.97 macro-F1 from raw pose CNN is a publishable result (per Constraint 4) — interpreted as "engineered features carried the signal".
+- **Subject/competition holdout** strongly preferred over random CV — random fold CV here is acceptable only because labels ⇄ features by design. The `cv_predictions.csv` fold IDs are the reference partition for Phase 4 paired comparison.
+- **Available pose data**: 114 single-athlete JSONs (commit `c600dea`). After intersect with labeled CSV rows, realised n is computed at Phase-3 load time; minority-class survival is the binding constraint.
 
 ---
 
