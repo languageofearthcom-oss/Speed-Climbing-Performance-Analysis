@@ -6,3 +6,4 @@ xgboost==2.0.3         # Gradient boosting baseline (Phase 2)
 hdbscan==0.8.33        # Optional: density-based fallback (Phase 1)
 joblib==1.3.2          # Model persistence
 imbalanced-learn==0.12.4  # SMOTE + cost-sensitive utilities (Phase 2)
+torch>=2.1             # 1D-CNN training (Phase 3); CPU build is acceptable
