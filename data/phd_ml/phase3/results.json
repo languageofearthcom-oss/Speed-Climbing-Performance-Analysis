@@ -1,0 +1,263 @@
+{
+  "n_samples": 107,
+  "classes": [
+    "advanced",
+    "beginner"
+  ],
+  "dataset_audit": {
+    "class_balance": {
+      "advanced": 101,
+      "beginner": 6
+    },
+    "intersect_status_counts": {
+      "ok": 107,
+      "single_lane_mismatch:left": 47,
+      "missing_pose": 45,
+      "single_lane_mismatch:right": 32,
+      "single_lane_uncertain:center": 15
+    },
+    "intersect_by_label_status": [
+      {
+        "label": "advanced",
+        "status": "missing_pose",
+        "count": 38
+      },
+      {
+        "label": "advanced",
+        "status": "ok",
+        "count": 101
+      },
+      {
+        "label": "advanced",
+        "status": "single_lane_mismatch:left",
+        "count": 45
+      },
+      {
+        "label": "advanced",
+        "status": "single_lane_mismatch:right",
+        "count": 27
+      },
+      {
+        "label": "advanced",
+        "status": "single_lane_uncertain:center",
+        "count": 15
+      },
+      {
+        "label": "beginner",
+        "status": "missing_pose",
+        "count": 7
+      },
+      {
+        "label": "beginner",
+        "status": "ok",
+        "count": 6
+      },
+      {
+        "label": "beginner",
+        "status": "single_lane_mismatch:left",
+        "count": 2
+      },
+      {
+        "label": "beginner",
+        "status": "single_lane_mismatch:right",
+        "count": 5
+      }
+    ],
+    "retained_by_competition": {
+      "Chamonix_2024": {
+        "advanced": 29,
+        "beginner": 0
+      },
+      "Innsbruck_2024": {
+        "advanced": 24,
+        "beginner": 0
+      },
+      "Seoul_2024": {
+        "advanced": 31,
+        "beginner": 3
+      },
+      "Villars_2024": {
+        "advanced": 17,
+        "beginner": 2
+      },
+      "Zilina_2025": {
+        "advanced": 0,
+        "beginner": 1
+      }
+    }
+  },
+  "split_strategy": "stratified",
+  "cv_folds": 3,
+  "fold_compositions": [
+    {
+      "fold": 0,
+      "train_n": 71,
+      "val_n": 36,
+      "train_class_balance": {
+        "advanced": 67,
+        "beginner": 4
+      },
+      "val_class_balance": {
+        "advanced": 34,
+        "beginner": 2
+      },
+      "val_competitions": [
+        "Chamonix_2024",
+        "Innsbruck_2024",
+        "Seoul_2024",
+        "Villars_2024"
+      ]
+    },
+    {
+      "fold": 1,
+      "train_n": 71,
+      "val_n": 36,
+      "train_class_balance": {
+        "advanced": 67,
+        "beginner": 4
+      },
+      "val_class_balance": {
+        "advanced": 34,
+        "beginner": 2
+      },
+      "val_competitions": [
+        "Chamonix_2024",
+        "Innsbruck_2024",
+        "Seoul_2024",
+        "Villars_2024",
+        "Zilina_2025"
+      ]
+    },
+    {
+      "fold": 2,
+      "train_n": 72,
+      "val_n": 35,
+      "train_class_balance": {
+        "advanced": 68,
+        "beginner": 4
+      },
+      "val_class_balance": {
+        "advanced": 33,
+        "beginner": 2
+      },
+      "val_competitions": [
+        "Chamonix_2024",
+        "Innsbruck_2024",
+        "Seoul_2024",
+        "Villars_2024"
+      ]
+    }
+  ],
+  "model_parameters": 79922,
+  "metrics_aggregated": {
+    "f1_macro_mean": 0.525225468975469,
+    "f1_macro_std": 0.07894913571649885,
+    "f1_minority_mean": 0.1111111111111111,
+    "f1_minority_std": 0.15713484026367722,
+    "precision_minority_mean": 0.08333333333333333,
+    "precision_minority_std": 0.11785113019775792,
+    "recall_minority_mean": 0.16666666666666666,
+    "recall_minority_std": 0.23570226039551584,
+    "precision_majority_mean": 0.9498954599761052,
+    "precision_majority_std": 0.012933904880776434,
+    "recall_majority_mean": 0.93048128342246,
+    "recall_majority_std": 0.050354534373709584,
+    "roc_auc_mean": 0.5568924539512775,
+    "roc_auc_std": 0.2548137365380613,
+    "pr_auc_mean": 0.124013949013949,
+    "pr_auc_std": 0.0645414983305671,
+    "epochs_mean": 10.333333333333334,
+    "epochs_std": 0.9428090415820634,
+    "best_val_loss_mean": 0.5998535370700574,
+    "best_val_loss_std": 0.07830871304018078
+  },
+  "metrics_per_fold": [
+    {
+      "fold": 0,
+      "epochs": 11,
+      "best_val_loss": 0.6561597122086419,
+      "f1_macro": 0.45454545454545453,
+      "f1_minority": 0.0,
+      "precision_minority": 0.0,
+      "recall_minority": 0.0,
+      "precision_majority": 0.9375,
+      "recall_majority": 0.8823529411764706,
+      "support_minority": 2,
+      "support_majority": 34,
+      "confusion_matrix": [
+        [
+          30,
+          4
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "roc_auc": 0.6617647058823529,
+      "pr_auc": 0.11212121212121212
+    },
+    {
+      "fold": 1,
+      "epochs": 11,
+      "best_val_loss": 0.48911356925964355,
+      "f1_macro": 0.4857142857142857,
+      "f1_minority": 0.0,
+      "precision_minority": 0.0,
+      "recall_minority": 0.0,
+      "precision_majority": 0.9444444444444444,
+      "recall_majority": 1.0,
+      "support_minority": 2,
+      "support_majority": 34,
+      "confusion_matrix": [
+        [
+          34,
+          0
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "roc_auc": 0.20588235294117646,
+      "pr_auc": 0.051587301587301584
+    },
+    {
+      "fold": 2,
+      "epochs": 9,
+      "best_val_loss": 0.6542873297418866,
+      "f1_macro": 0.6354166666666666,
+      "f1_minority": 0.3333333333333333,
+      "precision_minority": 0.25,
+      "recall_minority": 0.5,
+      "precision_majority": 0.967741935483871,
+      "recall_majority": 0.9090909090909091,
+      "support_minority": 2,
+      "support_majority": 33,
+      "confusion_matrix": [
+        [
+          30,
+          3
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "roc_auc": 0.8030303030303031,
+      "pr_auc": 0.20833333333333331
+    }
+  ],
+  "phase2_reference": {
+    "logreg_balanced_f1_macro": 0.978,
+    "xgb_f1_macro": 0.972,
+    "majority_floor_accuracy": 0.9187
+  },
+  "config_snapshot": {
+    "epochs": 20,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "augmentation_multiplicity": 3,
+    "class_weight_strategy": "inverse_frequency"
+  }
+}

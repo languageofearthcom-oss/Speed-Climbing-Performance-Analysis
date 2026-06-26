@@ -1,7 +1,7 @@
 # Phase 3 — 1D-CNN on Pose Time-Series
 
 **Branch**: `phd-ml/phase3-cnn`
-**Status at scaffold**: Code committed, awaiting first execution.
+**Status**: Pipeline executed on the lane-matched pose subset.
 **Predecessors**: `phd-ml/phase1-auto-labeling` (labels) and `phd-ml/phase2-baseline` (reference baselines).
 
 ---
@@ -37,14 +37,20 @@ A future study with substantially more pose data should use **ST-GCN** (Spatial-
 | `data/processed/poses/samples/` | 10 | dual-lane `frames[].{left_climber, right_climber}` | both lanes carried in one file | 100% detection rate |
 | **Missing for Phase 3** | 74 races + the second climber of every dual race | re-running `scripts/batch/extract_poses.py` with `dual_lane_detector.py` | both lanes | — |
 
-The Phase-3 loader (`loader.py:_discover_pose_files`) detects both schemas and emits a uniform `(T, 33, 3)` tensor per file. After intersecting with the labeled CSV, the realised training set will be:
+The Phase-3 loader detects both schemas and emits a uniform `(T, 33, 3)` tensor. Because Phase 1 labels are lane-level rows, the loader is deliberately **lane-aware**:
+
+- dual-lane files emit the requested lane (`left_climber` or `right_climber`),
+- single-athlete files are used only when `MANIFEST.csv:athlete_lane_inferred` matches the label row's `lane`,
+- single-athlete `center` and lane-mismatch cases are dropped rather than duplicated with potentially wrong labels.
+
+After intersecting with the labeled CSV, the realised training set is:
 
 ```
-n_total       = labeled_rows ∩ pose_files_available
-n_minority    = (n_total beginners) — binding constraint for any imbalance strategy
+n_total       = 107 lane-matched samples
+n_minority    = 6 beginners — the binding constraint for any imbalance strategy
 ```
 
-`build_dataset()` writes `data/phd_ml/phase3/intersect_report.csv` showing which labelled rows were dropped (`missing_pose`, `load_error`, `too_few_frames`). The very first sanity check is to confirm `n_minority ≥ CV_FOLDS` so each fold gets at least one positive example. If not, the loader emits a warning and the project should either fall back to leave-one-out CV or run more pose extractions.
+`build_dataset()` writes `data/phd_ml/phase3/intersect_report.csv` showing which labelled rows were dropped (`missing_pose`, `single_lane_mismatch:*`, `single_lane_uncertain:center`, `load_error`, `too_few_frames`). The very first sanity check is to confirm `n_minority ≥ CV_FOLDS` so each fold gets at least one positive example. With 3-fold CV, each validation fold has only two beginner examples.
 
 ## 4. Pre-processing pipeline
 
@@ -63,7 +69,7 @@ CNNs need many samples; 246 (real) samples do not span the kinematic manifold. W
 | Time warp | ±15% linear temporal scale | Climbers of different rhythm; resampled back to fixed length |
 | Anatomical mirror | 50% probability, swap left/right landmark indices + flip x | Right-handed → left-handed; ~doubles the effective dataset |
 
-`AUG_MULTIPLICITY = 5` virtual replicas per real sample. Augmentation runs **inside the training fold only** — never on the validation fold (the same leakage rule that governed SMOTE in Phase 2).
+`AUG_MULTIPLICITY = 3` virtual replicas per real sample by default. This keeps the CPU run practical while still exposing the network to detector jitter, rhythm changes, and left/right reflection. Augmentation runs **inside the training fold only** — never on the validation fold (the same leakage rule that governed SMOTE in Phase 2).
 
 ## 6. Class imbalance
 
@@ -76,10 +82,11 @@ Phase 2 found that `class_weight='balanced'` (cost-sensitive learning) outperfor
 
 | Strategy | Where it lives | What it tells us | Reportable? |
 |---|---|---|---|
-| **Stratified-5-Fold** (random) | `SPLIT_STRATEGY = "stratified"` | Pairs with Phase 2 cv_predictions.csv on identical `sample_index` for paired comparison in Phase 4 | Auxiliary only |
-| **Subject-aware GroupKFold** | `SPLIT_STRATEGY = "subject_aware"` | Held-out athlete never seen at training; the only valid generalisation test under the Phase 2 tautology caveat | **Headline result** |
+| **Stratified-3-Fold** (random) | `SPLIT_STRATEGY = "stratified"` | Keeps roughly 4-5 beginner examples per validation fold and pairs with Phase 2 by `sample_index` for Phase 4 | Primary executable run in the current repository |
+| **Competition-aware GroupKFold** | `SPLIT_STRATEGY = "competition_aware"` | Holds out an event at a time; useful as a generalisation stress test | Diagnostic only |
+| **Subject-aware GroupKFold** | `SPLIT_STRATEGY = "subject_aware"` | Held-out athlete never seen at training; requires real athlete identifiers | Future headline result when metadata exists |
 
-The stratified split is included because it lets Phase 4 perform McNemar / paired-bootstrap comparison with the Phase-2 baselines. **Any reported headline number must come from the subject-aware split.**
+The stratified split is included because it lets Phase 4 perform McNemar / paired-bootstrap comparison with the Phase-2 baselines. A true subject-aware split remains the scientifically strongest design, but the current `*_results.json` files do not carry athlete names or IDs. Therefore any subject-aware claim must wait for metadata; the current repository reports stratified 3-fold as the executable Phase-3 run and competition-aware split only as a diagnostic stress test.
 
 > The current `_athlete_from_race_id` is a placeholder that groups by competition, not by individual climber — the project does not yet have athlete metadata joined to `race_id`. **Before reporting a subject-aware result, replace this function** with a proper join against `data/race_segments/<competition>/<race>_results.json` (each race file lists the two athletes and lanes).
 
@@ -88,15 +95,15 @@ The stratified split is included because it lets Phase 4 perform McNemar / paire
 `PoseCNN` (see `models.py`):
 
 ```
-Conv1d(99 → 64, k=5) → BN → ReLU → Dropout(0.3)
-Conv1d(64 → 128, k=5) → BN → ReLU → Dropout(0.3)
-Conv1d(128 → 128, k=3) → BN → ReLU → Dropout(0.3)
+Conv1d(99 → 48, k=5) → BN → ReLU → Dropout(0.3)
+Conv1d(48 → 96, k=5) → BN → ReLU → Dropout(0.3)
+Conv1d(96 → 96, k=3) → BN → ReLU → Dropout(0.3)
 GlobalAveragePool(time)
-Linear(128 → 64) → ReLU → Dropout(0.3)
-Linear(64 → 2)
+Linear(96 → 48) → ReLU → Dropout(0.3)
+Linear(48 → 2)
 ```
 
-Total trainable parameters: ~ 60k (confirm via `models.count_parameters()` at run time). Optimiser is AdamW(lr=1e-3, weight_decay=1e-4) with cosine LR schedule and gradient clipping at 1.0. Early stopping with patience=12 on validation loss.
+Total trainable parameters: ~ 80k (confirmed via `models.count_parameters()` at run time). Optimiser is AdamW(lr=1e-3, weight_decay=1e-4) with cosine LR schedule and gradient clipping at 1.0. Early stopping uses patience=6 on validation loss.
 
 ## 9. Honest outcome bands
 
@@ -126,6 +133,22 @@ figures/phd_ml/phase3/
   ├── confusion_matrix.png
   └── metric_summary.png     # CNN bars with Phase-2 reference overlay
 ```
+
+## 10.1 Executed results (lane-matched subset)
+
+Executed with `SPLIT_STRATEGY=stratified`, `CV_FOLDS=3`, `AUG_MULTIPLICITY=3`, CPU-only PyTorch 2.1.2, and the 79,922-parameter 1D-CNN.
+
+| Metric | Mean ± std |
+|---|---|
+| Macro-F1 | 0.525 ± 0.079 |
+| F1 beginner | 0.111 ± 0.157 |
+| ROC-AUC | 0.557 ± 0.255 |
+| PR-AUC | 0.124 ± 0.065 |
+| Beginner recall | 0.167 ± 0.236 |
+
+Pooled over folds, the model catches only 1 of 6 beginner samples. This is an honest negative result: after enforcing lane correctness, the supervised pose-time-series set is too small and too imbalanced for a 1D-CNN to recover the Phase-1 pseudo-label partition. The result should be reported as evidence for a data bottleneck, not as a failed implementation.
+
+The key methodological correction in this run is the lane-aware loader. Earlier scaffold logic joined by race_id only, which could duplicate one single-athlete pose tensor for both left and right lane labels. That was fixed before reporting any Phase-3 result.
 
 ## 11. Reproduction
 

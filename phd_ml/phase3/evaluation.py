@@ -90,16 +90,20 @@ def aggregate(per_fold: list[dict]) -> dict:
 
 
 def to_cv_predictions_df(fold_results: list[FoldResult]) -> pd.DataFrame:
-    """Long-format predictions DataFrame keyed by sample_index (race_id).
+    """Long-format predictions DataFrame keyed by Phase-1 row index.
 
     Matches the Phase-2 cv_predictions.csv schema so the Phase-4 paired
-    comparison can join on `sample_index` directly.
+    comparison can join on `sample_index` directly. `sample_key` is retained
+    for human inspection as race_id:lane.
     """
     rows: list[dict] = []
     for fr in fold_results:
-        for sid, yt, yp, prob in zip(fr.sample_ids_val, fr.y_val, fr.y_pred, fr.y_prob):
+        for phase1_idx, sid, yt, yp, prob in zip(
+            fr.phase1_indices_val, fr.sample_ids_val, fr.y_val, fr.y_pred, fr.y_prob
+        ):
             rows.append({
-                "sample_index": sid,
+                "sample_index": int(phase1_idx),
+                "sample_key": sid,
                 "fold": fr.fold,
                 "y_true": int(yt),
                 "y_pred": int(yp),

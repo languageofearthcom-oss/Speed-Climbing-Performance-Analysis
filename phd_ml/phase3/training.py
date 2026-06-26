@@ -21,6 +21,7 @@ class FoldResult:
     train_idx: np.ndarray
     val_idx: np.ndarray
     sample_ids_val: list[str]
+    phase1_indices_val: list[int]
     y_val: np.ndarray
     y_pred: np.ndarray
     y_prob: np.ndarray
@@ -76,7 +77,8 @@ def _build_loaders(X_train: np.ndarray, y_train: np.ndarray,
 
 
 def train_one_fold(fold: int, X: np.ndarray, y: np.ndarray, sample_ids: list[str],
-                   train_idx: np.ndarray, val_idx: np.ndarray) -> FoldResult:
+                   phase1_indices: list[int], train_idx: np.ndarray,
+                   val_idx: np.ndarray) -> FoldResult:
     _seed_everything(config.RANDOM_STATE + fold)
     rng = np.random.default_rng(config.RANDOM_STATE + fold)
     device = _device()
@@ -164,6 +166,7 @@ def train_one_fold(fold: int, X: np.ndarray, y: np.ndarray, sample_ids: list[str
         fold=fold,
         train_idx=train_idx, val_idx=val_idx,
         sample_ids_val=[sample_ids[i] for i in val_idx],
+        phase1_indices_val=[phase1_indices[i] for i in val_idx],
         y_val=y_val, y_pred=y_pred, y_prob=y_prob_pos,
         epochs_trained=epochs_used,
         best_val_loss=best_val_loss,

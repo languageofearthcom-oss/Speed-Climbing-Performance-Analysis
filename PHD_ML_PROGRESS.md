@@ -21,7 +21,7 @@
 |-------|-------|--------|--------|----------|
 | 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | Pipeline executed, results documented, awaiting sign-off | ⏳ |
 | 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pipeline executed (commit `24d12df`), results documented, awaiting sign-off | ⏳ |
-| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Scaffold committed — 114 / 188 pose JSONs available (61% coverage) | — |
+| 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pipeline executed on lane-matched subset — negative result documented | ⏳ |
 | 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Pending | — |
 
 ---
@@ -82,7 +82,63 @@ Stratified-5-Fold CV on 246 samples (226 advanced / 20 beginner). Majority-class
 - **Beat-baseline target**: ≥ 0.97 macro-F1 (logreg level), NOT 0.92 floor.
 - **Honest range**: 0.65 – 0.97 macro-F1 from raw pose CNN is a publishable result (per Constraint 4) — interpreted as "engineered features carried the signal".
 - **Subject/competition holdout** strongly preferred over random CV — random fold CV here is acceptable only because labels ⇄ features by design. The `cv_predictions.csv` fold IDs are the reference partition for Phase 4 paired comparison.
-- **Available pose data**: 114 single-athlete JSONs (commit `c600dea`). After intersect with labeled CSV rows, realised n is computed at Phase-3 load time; minority-class survival is the binding constraint.
+- **Available pose data**: 114 single-athlete JSONs (commit `c600dea`). After strict lane matching, realised n is smaller than the earlier race-level intersect: 107 lane-matched samples, only 6 beginners. This became the binding constraint for Phase 3.
+
+---
+
+## Phase 3 Empirical Results (executed 2026-06-27)
+
+The scaffold originally joined pose files to labels by race_id. During execution, `cv_predictions.csv` exposed duplicate sample keys, which revealed a methodological bug: Phase-1 labels are lane-level rows (`video_id`, `lane`), while many Phase-3 pose files are single-athlete extractions. The loader was corrected before reporting results:
+
+- dual-lane samples use the requested lane (`left_climber` / `right_climber`);
+- single-athlete files are accepted only when `MANIFEST.csv:athlete_lane_inferred` matches the label row's lane;
+- lane mismatches and uncertain `center` rows are dropped rather than duplicated.
+
+### Lane-aware pose intersect
+
+| Status | Count |
+|---|---:|
+| ok | 107 |
+| single_lane_mismatch:left | 47 |
+| missing_pose | 45 |
+| single_lane_mismatch:right | 32 |
+| single_lane_uncertain:center | 15 |
+
+**Training subset**: 107 samples = 101 advanced / 6 beginner. No duplicate `sample_index` or `sample_key` remains in Phase-3 predictions.
+
+### 1D-CNN configuration
+
+| Setting | Value |
+|---|---|
+| Split | Stratified 3-fold |
+| Model | 1D-CNN over `(T=200, C=99)` BlazePose time-series |
+| Parameters | 79,922 |
+| Augmentation | Gaussian noise + time-warp + mirror, `AUG_MULTIPLICITY=3` |
+| Optimizer | AdamW + cosine LR + early stopping |
+
+### Results
+
+| Metric | Mean ± std |
+|---|---:|
+| Macro-F1 | 0.525 ± 0.079 |
+| F1 beginner | 0.111 ± 0.157 |
+| ROC-AUC | 0.557 ± 0.255 |
+| PR-AUC | 0.124 ± 0.065 |
+| Beginner recall | 0.167 ± 0.236 |
+
+Fold-level confusion matrices:
+
+| Fold | Confusion matrix `[[TN, FP], [FN, TP]]` | F1-macro | F1-beginner |
+|---|---|---:|---:|
+| 0 | `[[30, 4], [2, 0]]` | 0.455 | 0.000 |
+| 1 | `[[34, 0], [2, 0]]` | 0.486 | 0.000 |
+| 2 | `[[30, 3], [1, 1]]` | 0.635 | 0.333 |
+
+### Interpretation
+
+This is a clear negative result, and it is scientifically useful. Once lane correctness is enforced, the raw pose dataset has only 6 beginner samples. Under this constraint, a lightweight 1D-CNN cannot recover the Phase-1 pseudo-label partition and performs far below the feature-engineered Phase-2 ceiling (Macro-F1 0.978). The defensible thesis conclusion is not "CNN failed", but:
+
+> At the current sample size and lane-matched pose coverage, engineered kinematic features remain more reliable than representation learning from raw pose time-series. The next research step is not hyperparameter tuning; it is increasing lane-matched pose coverage and, with more data, evaluating ST-GCN.
 
 ---
 
