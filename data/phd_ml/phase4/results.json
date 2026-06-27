@@ -1,0 +1,334 @@
+{
+  "phase": 4,
+  "title": "Phase 2 vs Phase 3 comparative academic report",
+  "comparison_rule": "Metrics are computed only on sample_index values shared by Phase 2 predictions and Phase 3 lane-matched CNN predictions.",
+  "reference_model": "logreg_balanced",
+  "cnn_model": "cnn1d",
+  "audit": {
+    "phase2_total_samples": 246,
+    "phase2_beginner_samples": 20,
+    "phase3_total_samples": 107,
+    "common_n_samples": 107,
+    "common_advanced_samples": 101,
+    "common_beginner_samples": 6,
+    "phase3_intersect_status_counts": {
+      "ok": 107,
+      "single_lane_mismatch:left": 47,
+      "missing_pose": 45,
+      "single_lane_mismatch:right": 32,
+      "single_lane_uncertain:center": 15
+    },
+    "phase3_class_balance": {
+      "advanced": 101,
+      "beginner": 6
+    }
+  },
+  "phase2_full_summary": [
+    {
+      "model": "dummy_majority",
+      "n_samples": 246,
+      "f1_macro_mean": 0.4788120567375887,
+      "f1_beginner_mean": 0.0,
+      "roc_auc_mean": 0.5,
+      "pr_auc_mean": 0.08130612244897958
+    },
+    {
+      "model": "logreg_balanced",
+      "n_samples": 246,
+      "f1_macro_mean": 0.9777272727272728,
+      "f1_beginner_mean": 0.96,
+      "roc_auc_mean": 1.0,
+      "pr_auc_mean": 1.0
+    },
+    {
+      "model": "rf_balanced",
+      "n_samples": 246,
+      "f1_macro_mean": 0.9491081382385731,
+      "f1_beginner_mean": 0.9047619047619048,
+      "roc_auc_mean": 0.9988888888888889,
+      "pr_auc_mean": 0.99
+    },
+    {
+      "model": "xgb_scale_pos_weight",
+      "n_samples": 246,
+      "f1_macro_mean": 0.9723806779986555,
+      "f1_beginner_mean": 0.9492063492063492,
+      "roc_auc_mean": 1.0,
+      "pr_auc_mean": 1.0
+    },
+    {
+      "model": "rf_smote",
+      "n_samples": 246,
+      "f1_macro_mean": 0.9692307692307693,
+      "f1_beginner_mean": 0.9428571428571428,
+      "roc_auc_mean": 0.9988888888888889,
+      "pr_auc_mean": 0.99
+    },
+    {
+      "model": "xgb_smote",
+      "n_samples": 246,
+      "f1_macro_mean": 0.9723806779986555,
+      "f1_beginner_mean": 0.9492063492063492,
+      "roc_auc_mean": 1.0,
+      "pr_auc_mean": 1.0
+    }
+  ],
+  "phase3_full_summary": {
+    "n_samples": 107,
+    "metrics_aggregated": {
+      "f1_macro_mean": 0.525225468975469,
+      "f1_macro_std": 0.07894913571649885,
+      "f1_minority_mean": 0.1111111111111111,
+      "f1_minority_std": 0.15713484026367722,
+      "precision_minority_mean": 0.08333333333333333,
+      "precision_minority_std": 0.11785113019775792,
+      "recall_minority_mean": 0.16666666666666666,
+      "recall_minority_std": 0.23570226039551584,
+      "precision_majority_mean": 0.9498954599761052,
+      "precision_majority_std": 0.012933904880776434,
+      "recall_majority_mean": 0.93048128342246,
+      "recall_majority_std": 0.050354534373709584,
+      "roc_auc_mean": 0.5568924539512775,
+      "roc_auc_std": 0.2548137365380613,
+      "pr_auc_mean": 0.124013949013949,
+      "pr_auc_std": 0.0645414983305671,
+      "epochs_mean": 10.333333333333334,
+      "epochs_std": 0.9428090415820634,
+      "best_val_loss_mean": 0.5998535370700574,
+      "best_val_loss_std": 0.07830871304018078
+    },
+    "model_parameters": 79922
+  },
+  "metrics_common": [
+    {
+      "model": "dummy_majority",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.9439252336448598,
+      "balanced_accuracy": 0.5,
+      "f1_macro": 0.4855769230769231,
+      "f1_beginner": 0.0,
+      "precision_beginner": 0.0,
+      "recall_beginner": 0.0,
+      "precision_advanced": 0.9439252336448598,
+      "recall_advanced": 1.0,
+      "roc_auc": 0.5,
+      "pr_auc": 0.056074766355140186,
+      "tn": 101,
+      "fp": 0,
+      "fn": 6,
+      "tp": 0
+    },
+    {
+      "model": "logreg_balanced",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "f1_macro": 1.0,
+      "f1_beginner": 1.0,
+      "precision_beginner": 1.0,
+      "recall_beginner": 1.0,
+      "precision_advanced": 1.0,
+      "recall_advanced": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "tn": 101,
+      "fp": 0,
+      "fn": 0,
+      "tp": 6
+    },
+    {
+      "model": "rf_balanced",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.9906542056074766,
+      "balanced_accuracy": 0.9166666666666667,
+      "f1_macro": 0.9520824003582624,
+      "f1_beginner": 0.9090909090909091,
+      "precision_beginner": 1.0,
+      "recall_beginner": 0.8333333333333334,
+      "precision_advanced": 0.9901960784313726,
+      "recall_advanced": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "tn": 101,
+      "fp": 0,
+      "fn": 1,
+      "tp": 5
+    },
+    {
+      "model": "xgb_scale_pos_weight",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.9906542056074766,
+      "balanced_accuracy": 0.9166666666666667,
+      "f1_macro": 0.9520824003582624,
+      "f1_beginner": 0.9090909090909091,
+      "precision_beginner": 1.0,
+      "recall_beginner": 0.8333333333333334,
+      "precision_advanced": 0.9901960784313726,
+      "recall_advanced": 1.0,
+      "roc_auc": 0.9983498349834984,
+      "pr_auc": 0.9761904761904762,
+      "tn": 101,
+      "fp": 0,
+      "fn": 1,
+      "tp": 5
+    },
+    {
+      "model": "rf_smote",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.9906542056074766,
+      "balanced_accuracy": 0.9166666666666667,
+      "f1_macro": 0.9520824003582624,
+      "f1_beginner": 0.9090909090909091,
+      "precision_beginner": 1.0,
+      "recall_beginner": 0.8333333333333334,
+      "precision_advanced": 0.9901960784313726,
+      "recall_advanced": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "tn": 101,
+      "fp": 0,
+      "fn": 1,
+      "tp": 5
+    },
+    {
+      "model": "xgb_smote",
+      "source_phase": "phase2_feature_engineered",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.9906542056074766,
+      "balanced_accuracy": 0.9166666666666667,
+      "f1_macro": 0.9520824003582624,
+      "f1_beginner": 0.9090909090909091,
+      "precision_beginner": 1.0,
+      "recall_beginner": 0.8333333333333334,
+      "precision_advanced": 0.9901960784313726,
+      "recall_advanced": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "tn": 101,
+      "fp": 0,
+      "fn": 1,
+      "tp": 5
+    },
+    {
+      "model": "cnn1d",
+      "source_phase": "phase3_pose_cnn",
+      "n_samples": 107,
+      "support_advanced": 101,
+      "support_beginner": 6,
+      "accuracy": 0.8878504672897196,
+      "balanced_accuracy": 0.5486798679867987,
+      "f1_macro": 0.5414285714285715,
+      "f1_beginner": 0.14285714285714288,
+      "precision_beginner": 0.125,
+      "recall_beginner": 0.16666666666666666,
+      "precision_advanced": 0.9494949494949495,
+      "recall_advanced": 0.9306930693069307,
+      "roc_auc": 0.528052805280528,
+      "pr_auc": 0.08608000604837304,
+      "tn": 94,
+      "fp": 7,
+      "fn": 5,
+      "tp": 1
+    }
+  ],
+  "paired_tests": {
+    "reference_model": "logreg_balanced",
+    "cnn_model": "cnn1d",
+    "mcnemar_exact": {
+      "both_correct": 95,
+      "both_wrong": 0,
+      "reference_only_correct": 12,
+      "cnn_only_correct": 0,
+      "discordant_pairs": 12,
+      "exact_binomial_p_value": 0.00048828125
+    },
+    "bootstrap_reference_minus_cnn": [
+      {
+        "metric": "accuracy",
+        "reference_minus_cnn_mean": 0.11218130841121497,
+        "ci95_low": 0.05607476635514019,
+        "ci95_high": 0.16822429906542058,
+        "n_effective": 5000
+      },
+      {
+        "metric": "balanced_accuracy",
+        "reference_minus_cnn_mean": 0.4514466564057351,
+        "ci95_low": 0.26485148514851486,
+        "ci95_high": 0.5544554455445545,
+        "n_effective": 4988
+      },
+      {
+        "metric": "f1_macro",
+        "reference_minus_cnn_mean": 0.4631440640105271,
+        "ci95_low": 0.31470588235294117,
+        "ci95_high": 0.5431472081218274,
+        "n_effective": 4988
+      },
+      {
+        "metric": "f1_beginner",
+        "reference_minus_cnn_mean": 0.865935994321858,
+        "ci95_low": 0.5789473684210527,
+        "ci95_high": 1.0,
+        "n_effective": 4988
+      },
+      {
+        "metric": "precision_beginner",
+        "reference_minus_cnn_mean": 0.8727279446705685,
+        "ci95_low": 0.5714285714285714,
+        "ci95_high": 1.0,
+        "n_effective": 5000
+      },
+      {
+        "metric": "recall_beginner",
+        "reference_minus_cnn_mean": 0.8333987778905582,
+        "ci95_low": 0.5,
+        "ci95_high": 1.0,
+        "n_effective": 4988
+      },
+      {
+        "metric": "roc_auc",
+        "reference_minus_cnn_mean": 0.46978454006317677,
+        "ci95_low": 0.16602941176470587,
+        "ci95_high": 0.7961165048543689,
+        "n_effective": 4988
+      },
+      {
+        "metric": "pr_auc",
+        "reference_minus_cnn_mean": 0.9023027239410648,
+        "ci95_low": 0.7771379802867462,
+        "ci95_high": 0.9753291932246811,
+        "n_effective": 4988
+      }
+    ]
+  },
+  "figures": {
+    "common_metric_comparison": "/config/workspace/Speed-Climbing-Performance-Analysis/figures/phd_ml/phase4/common_metric_comparison.png",
+    "beginner_precision_recall": "/config/workspace/Speed-Climbing-Performance-Analysis/figures/phd_ml/phase4/beginner_precision_recall.png",
+    "reference_vs_cnn_confusion": "/config/workspace/Speed-Climbing-Performance-Analysis/figures/phd_ml/phase4/reference_vs_cnn_confusion.png",
+    "reference_vs_cnn_curves": "/config/workspace/Speed-Climbing-Performance-Analysis/figures/phd_ml/phase4/reference_vs_cnn_curves.png",
+    "lane_matched_data_bottleneck": "/config/workspace/Speed-Climbing-Performance-Analysis/figures/phd_ml/phase4/lane_matched_data_bottleneck.png"
+  },
+  "interpretation": [
+    "Phase 2 remains the feature-engineered ceiling because its labels were derived from the same engineered feature space.",
+    "Phase 3 is a more independent test because the 1D-CNN receives pose time-series rather than the Phase-1 engineered summary features.",
+    "The CNN underperforms on the common subset, but the primary bottleneck is the strict lane-matched beginner count: 6 samples.",
+    "The next defensible research step is expanding lane-matched pose coverage before testing higher-capacity sequence models such as ST-GCN."
+  ]
+}

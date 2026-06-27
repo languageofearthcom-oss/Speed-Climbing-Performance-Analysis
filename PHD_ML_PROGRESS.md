@@ -22,7 +22,7 @@
 | 1 | Auto-labeling (Unsupervised + Skill Proxy) | `phd-ml/phase1-auto-labeling` | Pipeline executed, results documented, awaiting sign-off | ⏳ |
 | 2 | Traditional Baseline (Random Forest / XGBoost) | `phd-ml/phase2-baseline` | Pipeline executed (commit `24d12df`), results documented, awaiting sign-off | ⏳ |
 | 3 | 1D-CNN on Pose Time-Series + Augmentation | `phd-ml/phase3-cnn` | Pipeline executed on lane-matched subset — negative result documented | ⏳ |
-| 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Pending | — |
+| 4 | Comparative Academic Report (ROC, Accuracy, Discussion) | `phd-ml/phase4-report` | Paired comparison executed and Persian Word report generated | ⏳ |
 
 ---
 
@@ -139,6 +139,85 @@ Fold-level confusion matrices:
 This is a clear negative result, and it is scientifically useful. Once lane correctness is enforced, the raw pose dataset has only 6 beginner samples. Under this constraint, a lightweight 1D-CNN cannot recover the Phase-1 pseudo-label partition and performs far below the feature-engineered Phase-2 ceiling (Macro-F1 0.978). The defensible thesis conclusion is not "CNN failed", but:
 
 > At the current sample size and lane-matched pose coverage, engineered kinematic features remain more reliable than representation learning from raw pose time-series. The next research step is not hyperparameter tuning; it is increasing lane-matched pose coverage and, with more data, evaluating ST-GCN.
+
+---
+
+## Phase 4 Empirical Results (executed 2026-06-27)
+
+Phase 4 does not train a new model. It compares Phase 2 and Phase 3 fairly on the identical `sample_index` subset retained by the lane-aware Phase-3 pose intersect.
+
+### Fair comparison subset
+
+| Item | Count |
+|---|---:|
+| Phase 2 full labeled dataset | 246 |
+| Phase 2 full beginner count | 20 |
+| Phase 3 lane-matched subset | 107 |
+| Shared comparison subset | 107 |
+| Shared advanced count | 101 |
+| Shared beginner count | 6 |
+
+### Common-subset metrics
+
+| Model | Source | Macro-F1 | F1 beginner | Beginner recall | ROC-AUC | PR-AUC | Confusion `[[TN, FP], [FN, TP]]` |
+|---|---|---:|---:|---:|---:|---:|---|
+| dummy_majority | Phase 2 | 0.486 | 0.000 | 0.000 | 0.500 | 0.056 | `[[101, 0], [6, 0]]` |
+| **logreg_balanced** | Phase 2 | **1.000** | **1.000** | **1.000** | **1.000** | **1.000** | `[[101, 0], [0, 6]]` |
+| rf_balanced | Phase 2 | 0.952 | 0.909 | 0.833 | 1.000 | 1.000 | `[[101, 0], [1, 5]]` |
+| xgb_scale_pos_weight | Phase 2 | 0.952 | 0.909 | 0.833 | 0.998 | 0.976 | `[[101, 0], [1, 5]]` |
+| rf_smote | Phase 2 | 0.952 | 0.909 | 0.833 | 1.000 | 1.000 | `[[101, 0], [1, 5]]` |
+| xgb_smote | Phase 2 | 0.952 | 0.909 | 0.833 | 1.000 | 1.000 | `[[101, 0], [1, 5]]` |
+| **cnn1d** | Phase 3 | **0.541** | **0.143** | **0.167** | **0.528** | **0.086** | `[[94, 7], [5, 1]]` |
+
+### Paired comparison
+
+Primary paired comparison: `logreg_balanced` vs `cnn1d` on the same 107 samples.
+
+| Test | Result |
+|---|---:|
+| Both correct | 95 |
+| Reference only correct | 12 |
+| CNN only correct | 0 |
+| Both wrong | 0 |
+| McNemar exact p-value | 0.000488 |
+
+Paired bootstrap direction is `logreg_balanced - cnn1d`; positive means the feature-engineered Phase-2 reference is better.
+
+| Metric | Mean difference | 95% CI |
+|---|---:|---:|
+| Accuracy | 0.112 | [0.056, 0.168] |
+| Balanced accuracy | 0.451 | [0.265, 0.554] |
+| Macro-F1 | 0.463 | [0.315, 0.543] |
+| F1 beginner | 0.866 | [0.579, 1.000] |
+| Recall beginner | 0.833 | [0.500, 1.000] |
+| ROC-AUC | 0.470 | [0.166, 0.796] |
+| PR-AUC | 0.902 | [0.777, 0.975] |
+
+### Interpretation
+
+Phase 2 is numerically much stronger on the common subset, but it remains the feature-engineered ceiling and is partly tautological because Phase-1 pseudo-labels were built from the same feature space. Phase 3 is the more independent representation-learning test because the 1D-CNN receives only pose time-series. The CNN result is negative, but the defensible conclusion is data bottleneck: strict lane matching leaves only 6 beginner examples.
+
+### Phase 4 outputs
+
+```
+data/phd_ml/phase4/
+  results.json
+  metrics_common.csv
+  common_predictions_long.csv
+  paired_predictions_logreg_vs_cnn.csv
+  paired_bootstrap_diffs.csv
+
+figures/phd_ml/phase4/
+  common_metric_comparison.png
+  beginner_precision_recall.png
+  reference_vs_cnn_confusion.png
+  reference_vs_cnn_curves.png
+  lane_matched_data_bottleneck.png
+
+phd_ml/phase4/
+  PHASE4_RATIONALE.md
+  PHASE4_COMPARATIVE_REPORT.docx
+```
 
 ---
 
